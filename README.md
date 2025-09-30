@@ -147,6 +147,28 @@ The system comes with pre-configured demo accounts:
 3. Click "Start Simulation" to begin generating realistic vitals data
 4. Watch real-time updates on charts and vitals cards
 
+### Standalone Vitals Demonstration
+
+To showcase the system's monitoring capabilities without running the full web application:
+
+**Production Mode (5-minute intervals):**
+```bash
+python simulate_vitals.py
+```
+
+**Demo Mode (5-second intervals for quick demonstration):**
+```bash
+python simulate_vitals_demo.py
+```
+
+These standalone scripts demonstrate:
+- Real-time vitals collection and monitoring
+- Intelligent analysis with alert detection
+- Continuous display of health metrics
+- System intelligence in action
+
+Press `Ctrl+C` to stop the simulation.
+
 ## 🔧 Configuration
 
 ### Environment Variables
