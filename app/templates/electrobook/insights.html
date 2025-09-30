@@ -1,0 +1,293 @@
+{% extends "base.html" %}
+
+{% block title %}Electrobook Insights - ChroniSense{% endblock %}
+
+{% block head %}
+<style>
+    .insight-card {
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .insight-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    }
+    .severity-critical {
+        border-left: 4px solid #EF4444;
+        background: linear-gradient(90deg, rgba(239, 68, 68, 0.05) 0%, transparent 100%);
+    }
+    .severity-warning {
+        border-left: 4px solid #F59E0B;
+        background: linear-gradient(90deg, rgba(245, 158, 11, 0.05) 0%, transparent 100%);
+    }
+    .severity-info {
+        border-left: 4px solid #3B82F6;
+        background: linear-gradient(90deg, rgba(59, 130, 246, 0.05) 0%, transparent 100%);
+    }
+    .timeline-dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        display: inline-block;
+    }
+    .gradient-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Header -->
+    <div class="gradient-header text-white rounded-2xl shadow-lg p-8 mb-8">
+        <div class="flex items-center justify-between">
+            <div>
+                <div class="flex items-center mb-2">
+                    <i class="fas fa-book-medical text-3xl mr-4"></i>
+                    <h1 class="text-3xl font-bold">Electrobook Insights</h1>
+                </div>
+                <p class="text-white/80 mt-2">Personalized health insights and recommendations for {{ patient.first_name }}</p>
+            </div>
+            <a href="{{ url_for('main.patient_dashboard') }}" class="bg-white text-purple-600 hover:bg-gray-100 px-4 py-2 rounded-lg text-sm font-medium inline-flex items-center">
+                <i class="fas fa-arrow-left mr-2"></i>
+                Back to Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Stats Overview -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div class="bg-white rounded-xl shadow-lg p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-600 text-sm">Daily Insights</p>
+                    <p class="text-3xl font-bold text-gray-900">{{ daily_insights|length }}</p>
+                </div>
+                <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <i class="fas fa-calendar-day text-blue-600 text-xl"></i>
+                </div>
+            </div>
+        </div>
+        <div class="bg-white rounded-xl shadow-lg p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-600 text-sm">Weekly Insights</p>
+                    <p class="text-3xl font-bold text-gray-900">{{ weekly_insights|length }}</p>
+                </div>
+                <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                    <i class="fas fa-calendar-week text-purple-600 text-xl"></i>
+                </div>
+            </div>
+        </div>
+        <div class="bg-white rounded-xl shadow-lg p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-600 text-sm">Total Insights</p>
+                    <p class="text-3xl font-bold text-gray-900">{{ (daily_insights|length) + (weekly_insights|length) }}</p>
+                </div>
+                <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                    <i class="fas fa-lightbulb text-green-600 text-xl"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Daily Insights Section -->
+    <div class="bg-white rounded-2xl shadow-lg p-8 mb-8">
+        <div class="flex items-center justify-between mb-6">
+            <div class="flex items-center">
+                <i class="fas fa-calendar-day text-2xl text-blue-600 mr-3"></i>
+                <h2 class="text-2xl font-bold text-gray-900">Daily Insights</h2>
+            </div>
+            <span class="text-sm text-gray-500">Last 7 days</span>
+        </div>
+
+        {% if daily_insights %}
+            <div class="space-y-4">
+                {% for insight in daily_insights %}
+                    <div class="insight-card severity-{{ insight.severity }} p-6 rounded-lg">
+                        <div class="flex items-start justify-between">
+                            <div class="flex-1">
+                                <div class="flex items-center mb-2">
+                                    <span class="timeline-dot {% if insight.severity == 'critical' %}bg-red-500{% elif insight.severity == 'warning' %}bg-yellow-500{% else %}bg-blue-500{% endif %} mr-3"></span>
+                                    <h3 class="text-lg font-semibold text-gray-900">{{ insight.title }}</h3>
+                                </div>
+                                <p class="text-gray-700 mb-3 ml-6">{{ insight.content }}</p>
+                                <div class="flex items-center space-x-4 ml-6">
+                                    <span class="text-xs text-gray-500">
+                                        <i class="far fa-calendar mr-1"></i>
+                                        {{ insight.created_at.strftime('%B %d, %Y') }}
+                                    </span>
+                                    <span class="text-xs text-gray-500">
+                                        <i class="far fa-clock mr-1"></i>
+                                        {{ insight.period_start.strftime('%I:%M %p') }} - {{ insight.period_end.strftime('%I:%M %p') }}
+                                    </span>
+                                    {% if insight.generated_by_ai %}
+                                    <span class="text-xs bg-purple-100 text-purple-600 px-2 py-1 rounded">
+                                        <i class="fas fa-robot mr-1"></i>
+                                        AI Generated
+                                    </span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="ml-4">
+                                {% if insight.severity == 'critical' %}
+                                    <div class="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                                        <i class="fas fa-exclamation-triangle text-red-600"></i>
+                                    </div>
+                                {% elif insight.severity == 'warning' %}
+                                    <div class="w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center">
+                                        <i class="fas fa-exclamation-circle text-yellow-600"></i>
+                                    </div>
+                                {% else %}
+                                    <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                                        <i class="fas fa-info-circle text-blue-600"></i>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="text-center py-12">
+                <div class="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-calendar-day text-4xl text-blue-600"></i>
+                </div>
+                <h3 class="text-lg font-semibold text-gray-900 mb-2">No Daily Insights Yet</h3>
+                <p class="text-gray-600 mb-4">Daily insights will appear here as your health data is analyzed.</p>
+                <a href="{{ url_for('main.patient_dashboard') }}" class="text-blue-600 hover:text-blue-800 font-medium">
+                    Start tracking your vitals <i class="fas fa-arrow-right ml-1"></i>
+                </a>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Weekly Insights Section -->
+    <div class="bg-white rounded-2xl shadow-lg p-8">
+        <div class="flex items-center justify-between mb-6">
+            <div class="flex items-center">
+                <i class="fas fa-calendar-week text-2xl text-purple-600 mr-3"></i>
+                <h2 class="text-2xl font-bold text-gray-900">Weekly Insights</h2>
+            </div>
+            <span class="text-sm text-gray-500">Last 4 weeks</span>
+        </div>
+
+        {% if weekly_insights %}
+            <div class="space-y-4">
+                {% for insight in weekly_insights %}
+                    <div class="insight-card severity-{{ insight.severity }} p-6 rounded-lg">
+                        <div class="flex items-start justify-between">
+                            <div class="flex-1">
+                                <div class="flex items-center mb-2">
+                                    <span class="timeline-dot {% if insight.severity == 'critical' %}bg-red-500{% elif insight.severity == 'warning' %}bg-yellow-500{% else %}bg-purple-500{% endif %} mr-3"></span>
+                                    <h3 class="text-lg font-semibold text-gray-900">{{ insight.title }}</h3>
+                                </div>
+                                <p class="text-gray-700 mb-3 ml-6">{{ insight.content }}</p>
+                                <div class="flex items-center space-x-4 ml-6">
+                                    <span class="text-xs text-gray-500">
+                                        <i class="far fa-calendar mr-1"></i>
+                                        Week of {{ insight.period_start.strftime('%B %d, %Y') }}
+                                    </span>
+                                    <span class="text-xs text-gray-500">
+                                        <i class="far fa-clock mr-1"></i>
+                                        {{ insight.period_start.strftime('%b %d') }} - {{ insight.period_end.strftime('%b %d, %Y') }}
+                                    </span>
+                                    {% if insight.generated_by_ai %}
+                                    <span class="text-xs bg-purple-100 text-purple-600 px-2 py-1 rounded">
+                                        <i class="fas fa-robot mr-1"></i>
+                                        AI Generated
+                                    </span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="ml-4">
+                                {% if insight.severity == 'critical' %}
+                                    <div class="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                                        <i class="fas fa-exclamation-triangle text-red-600"></i>
+                                    </div>
+                                {% elif insight.severity == 'warning' %}
+                                    <div class="w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center">
+                                        <i class="fas fa-exclamation-circle text-yellow-600"></i>
+                                    </div>
+                                {% else %}
+                                    <div class="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                                        <i class="fas fa-chart-line text-purple-600"></i>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="text-center py-12">
+                <div class="w-20 h-20 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-calendar-week text-4xl text-purple-600"></i>
+                </div>
+                <h3 class="text-lg font-semibold text-gray-900 mb-2">No Weekly Insights Yet</h3>
+                <p class="text-gray-600 mb-4">Weekly insights will appear here as more data is collected over time.</p>
+                <a href="{{ url_for('main.patient_dashboard') }}" class="text-purple-600 hover:text-purple-800 font-medium">
+                    Continue tracking your health <i class="fas fa-arrow-right ml-1"></i>
+                </a>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="bg-gradient-to-r from-purple-500 to-pink-500 text-white p-6 rounded-2xl">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-lg font-semibold mb-2">AI Health Coach</h3>
+                    <p class="text-white/80 text-sm mb-4">Get personalized advice about your insights</p>
+                    <a href="{{ url_for('main.chatbot_page') }}" class="bg-white text-purple-600 hover:bg-gray-100 px-4 py-2 rounded-lg text-sm font-medium inline-flex items-center">
+                        <i class="fas fa-robot mr-2"></i>
+                        Ask About Insights
+                    </a>
+                </div>
+                <i class="fas fa-comments text-4xl text-white/60"></i>
+            </div>
+        </div>
+
+        <div class="bg-gradient-to-r from-blue-500 to-cyan-500 text-white p-6 rounded-2xl">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-lg font-semibold mb-2">Vitals History</h3>
+                    <p class="text-white/80 text-sm mb-4">View detailed health trends and patterns</p>
+                    <a href="{{ url_for('main.vitals_history') }}" class="bg-white text-blue-600 hover:bg-gray-100 px-4 py-2 rounded-lg text-sm font-medium inline-flex items-center">
+                        <i class="fas fa-chart-line mr-2"></i>
+                        View History
+                    </a>
+                </div>
+                <i class="fas fa-history text-4xl text-white/60"></i>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Smooth scroll animations
+document.addEventListener('DOMContentLoaded', function() {
+    const cards = document.querySelectorAll('.insight-card');
+    
+    // Animate cards on scroll
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.style.opacity = '1';
+                entry.target.style.transform = 'translateY(0)';
+            }
+        });
+    });
+    
+    cards.forEach(card => {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(20px)';
+        card.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+        observer.observe(card);
+    });
+});
+</script>
+{% endblock %}
