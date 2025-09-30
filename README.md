@@ -153,27 +153,22 @@ The system comes with pre-configured demo accounts:
 3. Click "Start Simulation" to begin generating realistic vitals data
 4. Watch real-time updates on charts and vitals cards
 
-### Standalone Vitals Demonstration
+### Vitals Simulation
 
-To showcase the system's monitoring capabilities without running the full web application:
+The system includes built-in vitals simulation that can be started directly from the patient dashboard:
 
-**Production Mode (5-minute intervals):**
-```bash
-python simulate_vitals.py
-```
+1. Log in as a patient
+2. Navigate to the dashboard
+3. Click "Start Simulation" to begin generating realistic vitals data
+4. Watch real-time updates on charts and vitals cards
+5. Click "Stop Simulation" to pause data generation
 
-**Demo Mode (5-second intervals for quick demonstration):**
-```bash
-python simulate_vitals_demo.py
-```
-
-These standalone scripts demonstrate:
-- Real-time vitals collection and monitoring
-- Intelligent analysis with alert detection
-- Continuous display of health metrics
-- System intelligence in action
-
-Press `Ctrl+C` to stop the simulation.
+The vitals simulator generates realistic health data including:
+- Heart rate with circadian rhythm patterns
+- Blood pressure variations
+- SpO₂ (oxygen saturation) levels
+- Temperature readings
+- Activity and sleep data
 
 ## 🔧 Configuration
 
