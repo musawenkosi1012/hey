@@ -33,20 +33,26 @@ class VitalsSimulator:
         self.running = True
         self.patient_id = patient_id
         
+        # Get current app and create context for thread
+        from flask import current_app
+        app = current_app._get_current_object()
+        
         def simulate():
             logger.debug(f"Simulation thread started for patient_id={patient_id}")
-            while self.running:
-                try:
-                    vitals = self.generate_realistic_vitals()
-                    self.save_vitals(vitals)
-                    self.emit_realtime_data(vitals)
-                    
-                    # Sleep for 30 seconds (simulate data every 30s)
-                    time.sleep(30)
-                except Exception as e:
-                    logger.error(f"Simulation error for patient_id={patient_id}: {e}", exc_info=True)
-                    time.sleep(5)
-            logger.info(f"Simulation thread stopped for patient_id={patient_id}")
+            # Push app context for this thread
+            with app.app_context():
+                while self.running:
+                    try:
+                        vitals = self.generate_realistic_vitals()
+                        self.save_vitals(vitals)
+                        self.emit_realtime_data(vitals)
+                        
+                        # Sleep for 30 seconds (simulate data every 30s)
+                        time.sleep(30)
+                    except Exception as e:
+                        logger.error(f"Simulation error for patient_id={patient_id}: {e}", exc_info=True)
+                        time.sleep(5)
+                logger.info(f"Simulation thread stopped for patient_id={patient_id}")
         
         thread = Thread(target=simulate)
         thread.daemon = True
@@ -132,8 +138,8 @@ class VitalsSimulator:
                 'vitals': vitals_data,
                 'timestamp': vitals_data['timestamp'].isoformat()
             }
-            # Emit without namespace for broader compatibility
-            socketio.emit('vitals_update', data, broadcast=True)
+            # Emit to all connected clients
+            socketio.emit('vitals_update', data)
             logger.debug(f"Emitted vitals update via WebSocket for patient_id={self.patient_id}")
             
             # Check for alerts
@@ -145,7 +151,7 @@ class VitalsSimulator:
                     'vitals': vitals_data,
                     'timestamp': vitals_data['timestamp'].isoformat()
                 }
-                socketio.emit('critical_alert', alert_data, broadcast=True)
+                socketio.emit('critical_alert', alert_data)
                 logger.warning(f"Critical alert emitted for patient_id={self.patient_id}: {alert_data['message']}")
                 
         except Exception as e:
