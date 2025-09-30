@@ -230,7 +230,7 @@ ChroniSense/
 For issues or questions:
 1. Run validation: `python3 validate_system.py`
 2. Check logs in console output
-3. Review `SYSTEM_TESTING_REPORT.md`
+3. Review `TESTING_REPORT.md` for test results
 4. Create an issue on GitHub
 
 ## License
