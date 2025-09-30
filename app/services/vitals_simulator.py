@@ -1,12 +1,16 @@
 import random
 import time
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from threading import Thread
 from app import db, socketio
 from app.models.vitals import VitalSigns
 from app.models.patient import Patient
 import requests
+
+# Helper function for naive UTC datetime (for DB compatibility)
+def utc_now():
+    return datetime.utcnow()
 
 class VitalsSimulator:
     def __init__(self):
@@ -43,7 +47,7 @@ class VitalsSimulator:
         
     def generate_realistic_vitals(self):
         """Generate realistic vital signs with some variation"""
-        current_time = datetime.utcnow()
+        current_time = utc_now()
         hour = current_time.hour
         
         # Simulate circadian rhythm effects

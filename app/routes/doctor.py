@@ -4,8 +4,12 @@ from app.models.patient import Patient
 from app.models.vitals import VitalSigns, RiskPrediction
 from app.models.insights import PatientInsight
 from app.models.user import User
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from sqlalchemy import func
+
+# Helper function for naive UTC datetime (for DB compatibility)
+def utc_now():
+    return datetime.utcnow()
 
 bp = Blueprint('doctor', __name__, url_prefix='/doctor')
 
@@ -22,13 +26,13 @@ def dashboard():
     # Get patients with recent alerts
     recent_alerts = VitalSigns.query.filter(
         VitalSigns.is_anomaly == True,
-        VitalSigns.timestamp >= datetime.utcnow() - timedelta(hours=24)
+        VitalSigns.timestamp >= utc_now() - timedelta(hours=24)
     ).join(Patient).all()
     
     # Get recent insights that need review
     pending_insights = PatientInsight.query.filter(
         PatientInsight.severity.in_(['warning', 'critical']),
-        PatientInsight.created_at >= datetime.utcnow() - timedelta(days=7)
+        PatientInsight.created_at >= utc_now() - timedelta(days=7)
     ).join(Patient).all()
     
     return render_template('doctor/dashboard.html',
@@ -48,7 +52,7 @@ def patient_detail(patient_id):
     # Get recent vitals (last 7 days)
     recent_vitals = VitalSigns.query.filter(
         VitalSigns.patient_id == patient_id,
-        VitalSigns.timestamp >= datetime.utcnow() - timedelta(days=7)
+        VitalSigns.timestamp >= utc_now() - timedelta(days=7)
     ).order_by(VitalSigns.timestamp.desc()).all()
     
     # Get latest risk prediction
@@ -62,7 +66,7 @@ def patient_detail(patient_id):
     ).order_by(PatientInsight.created_at.desc()).limit(10).all()
     
     # Calculate weekly averages
-    week_start = datetime.utcnow() - timedelta(days=7)
+    week_start = utc_now() - timedelta(days=7)
     week_vitals = [v for v in recent_vitals if v.timestamp >= week_start]
     
     weekly_stats = {}

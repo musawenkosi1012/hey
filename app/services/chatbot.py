@@ -1,12 +1,16 @@
 import os
 import json
 import random
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from app.models.vitals import VitalSigns, RiskPrediction
 from app.models.patient import Patient
 from app.models.insights import ChatMessage
 from app import db
 from app.services.web_scraper import scraper
+
+# Helper function for naive UTC datetime (for DB compatibility)
+def utc_now():
+    return datetime.utcnow()
 
 class HealthChatbot:
     def __init__(self):
@@ -69,7 +73,7 @@ class HealthChatbot:
             # Get recent vitals (last 24 hours)
             recent_vitals = VitalSigns.query.filter(
                 VitalSigns.patient_id == patient_id,
-                VitalSigns.timestamp >= datetime.utcnow() - timedelta(hours=24)
+                VitalSigns.timestamp >= utc_now() - timedelta(hours=24)
             ).order_by(VitalSigns.timestamp.desc()).limit(20).all()
             
             # Calculate averages

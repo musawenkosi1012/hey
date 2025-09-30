@@ -4,14 +4,21 @@ Database initialization script for ChroniSense
 Creates tables and sample data for testing
 """
 
+import warnings
+warnings.filterwarnings('ignore', category=DeprecationWarning)
+
 from app import create_app, db
 from app.models.user import User
 from app.models.patient import Patient
 from app.models.vitals import VitalSigns, RiskPrediction
 from app.models.insights import PatientInsight, ChatMessage
 from werkzeug.security import generate_password_hash
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 import random
+
+# Helper function for naive UTC datetime (for DB compatibility)
+def utc_now():
+    return datetime.utcnow()
 
 def create_sample_data():
     """Create sample users and data for testing"""
@@ -97,7 +104,7 @@ def create_sample_vitals(patient_id):
         'temperature': 98.6
     }
     
-    start_date = datetime.utcnow() - timedelta(days=7)
+    start_date = utc_now() - timedelta(days=7)
     
     for day in range(7):
         for hour in range(0, 24, 2):  # Every 2 hours
@@ -140,24 +147,24 @@ def create_sample_insights(patient_id):
             'content': 'Your blood pressure has been averaging 125/82 this week, which is within healthy ranges. Your heart rate shows good variability between rest and activity. Consider increasing your daily steps from 4,200 to 6,000 for optimal cardiovascular health.',
             'insight_type': 'weekly',
             'severity': 'info',
-            'period_start': datetime.utcnow() - timedelta(days=7),
-            'period_end': datetime.utcnow()
+            'period_start': utc_now() - timedelta(days=7),
+            'period_end': utc_now()
         },
         {
             'title': 'Daily Activity Reminder',
             'content': 'You completed 3,800 steps today, which is below your target of 6,000. Try taking a 20-minute walk after dinner to reach your goal.',
             'insight_type': 'daily',
             'severity': 'info',
-            'period_start': datetime.utcnow() - timedelta(days=1),
-            'period_end': datetime.utcnow()
+            'period_start': utc_now() - timedelta(days=1),
+            'period_end': utc_now()
         },
         {
             'title': 'Blood Pressure Trend Alert',
             'content': 'Your blood pressure readings have been slightly elevated over the past 2 days (averaging 138/88). Consider reducing sodium intake and increasing hydration.',
             'insight_type': 'alert',
             'severity': 'warning',
-            'period_start': datetime.utcnow() - timedelta(days=2),
-            'period_end': datetime.utcnow()
+            'period_start': utc_now() - timedelta(days=2),
+            'period_end': utc_now()
         }
     ]
     
