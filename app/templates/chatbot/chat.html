@@ -1,0 +1,403 @@
+{% extends "base.html" %}
+
+{% block title %}AI Health Coach - ChroniSense{% endblock %}
+
+{% block head %}
+<style>
+    .chat-container {
+        height: 70vh;
+        overflow-y: auto;
+    }
+    .message-bubble {
+        max-width: 80%;
+        word-wrap: break-word;
+    }
+    .user-message {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    .ai-message {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    }
+    .typing-indicator {
+        display: none;
+    }
+    .typing-indicator.active {
+        display: flex;
+    }
+    .dot {
+        width: 8px;
+        height: 8px;
+        background-color: #9CA3AF;
+        border-radius: 50%;
+        animation: typing 1.4s infinite ease-in-out;
+    }
+    .dot:nth-child(1) { animation-delay: -0.32s; }
+    .dot:nth-child(2) { animation-delay: -0.16s; }
+    
+    @keyframes typing {
+        0%, 80%, 100% { transform: scale(0); }
+        40% { transform: scale(1); }
+    }
+    
+    .suggestion-btn {
+        transition: all 0.2s ease;
+    }
+    .suggestion-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Header -->
+    <div class="text-center mb-8">
+        <div class="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full mb-4">
+            <i class="fas fa-robot text-2xl text-white"></i>
+        </div>
+        <h1 class="text-3xl font-bold text-gray-900 mb-2">AI Health Coach</h1>
+        <p class="text-gray-600">Your personal health assistant powered by AI</p>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        <!-- Chat Interface -->
+        <div class="lg:col-span-3">
+            <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
+                <!-- Chat Header -->
+                <div class="bg-gradient-to-r from-purple-500 to-pink-500 text-white p-4">
+                    <div class="flex items-center">
+                        <div class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center mr-3">
+                            <i class="fas fa-robot"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold">ChroniSense AI</h3>
+                            <p class="text-sm text-white/80">Your health coach is online</p>
+                        </div>
+                        <div class="ml-auto">
+                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-green-500 text-white">
+                                <span class="w-2 h-2 bg-white rounded-full mr-1"></span>
+                                Online
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Chat Messages -->
+                <div id="chatContainer" class="chat-container p-4 space-y-4">
+                    <!-- Welcome message -->
+                    <div class="flex items-start space-x-3">
+                        <div class="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center flex-shrink-0">
+                            <i class="fas fa-robot text-white text-sm"></i>
+                        </div>
+                        <div class="message-bubble ai-message text-white p-3 rounded-lg rounded-tl-none">
+                            <p>Hello {{ patient.first_name }}! 👋 I'm your AI health coach. I have access to your latest vitals and can provide personalized health advice. How can I help you today?</p>
+                        </div>
+                    </div>
+
+                    <!-- Typing indicator -->
+                    <div class="typing-indicator flex items-start space-x-3">
+                        <div class="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center flex-shrink-0">
+                            <i class="fas fa-robot text-white text-sm"></i>
+                        </div>
+                        <div class="bg-gray-200 p-3 rounded-lg rounded-tl-none">
+                            <div class="flex space-x-1">
+                                <div class="dot"></div>
+                                <div class="dot"></div>
+                                <div class="dot"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Chat Input -->
+                <div class="p-4 border-t border-gray-200">
+                    <form id="chatForm" class="flex space-x-3">
+                        <input type="text" id="messageInput" placeholder="Ask me anything about your health..." 
+                               class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                        <button type="submit" class="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-2 rounded-lg hover:from-purple-600 hover:to-pink-600 transition-all">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="space-y-6">
+            <!-- Quick Suggestions -->
+            <div class="bg-white rounded-2xl shadow-lg p-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Quick Questions</h3>
+                <div id="suggestions" class="space-y-3">
+                    <!-- Suggestions will be loaded here -->
+                </div>
+            </div>
+
+            <!-- Current Vitals Summary -->
+            <div class="bg-white rounded-2xl shadow-lg p-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Current Status</h3>
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-600">Blood Pressure</span>
+                        <span class="font-medium" id="current-bp">--/--</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-600">Heart Rate</span>
+                        <span class="font-medium" id="current-hr">-- bpm</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-600">Oxygen Saturation</span>
+                        <span class="font-medium" id="current-spo2">--%</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-600">Daily Steps</span>
+                        <span class="font-medium" id="current-steps">--</span>
+                    </div>
+                </div>
+                <div class="mt-4 pt-4 border-t border-gray-200">
+                    <a href="{{ url_for('main.patient_dashboard') }}" class="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                        View Full Dashboard <i class="fas fa-arrow-right ml-1"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Chat History -->
+            <div class="bg-white rounded-2xl shadow-lg p-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Recent Conversations</h3>
+                <div id="recentChats" class="space-y-2">
+                    <!-- Recent chats will be loaded here -->
+                </div>
+                <div class="mt-4 pt-4 border-t border-gray-200">
+                    <button id="clearHistory" class="text-red-600 hover:text-red-800 text-sm font-medium">
+                        Clear History <i class="fas fa-trash ml-1"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentSessionId = null;
+
+// Initialize chat
+document.addEventListener('DOMContentLoaded', function() {
+    loadQuickSuggestions();
+    loadRecentChats();
+    loadCurrentVitals();
+    
+    // Generate session ID
+    currentSessionId = generateSessionId();
+});
+
+// Generate session ID
+function generateSessionId() {
+    return 'chat_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+}
+
+// Load quick suggestions
+function loadQuickSuggestions() {
+    fetch('/api/chat/suggestions')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const suggestionsContainer = document.getElementById('suggestions');
+                suggestionsContainer.innerHTML = '';
+                
+                data.suggestions.forEach(suggestion => {
+                    const button = document.createElement('button');
+                    button.className = 'suggestion-btn w-full text-left p-3 bg-gray-50 hover:bg-purple-50 rounded-lg text-sm text-gray-700 hover:text-purple-700';
+                    button.textContent = suggestion;
+                    button.addEventListener('click', () => sendMessage(suggestion));
+                    suggestionsContainer.appendChild(button);
+                });
+            }
+        })
+        .catch(error => console.error('Error loading suggestions:', error));
+}
+
+// Load recent chats
+function loadRecentChats() {
+    fetch('/api/chat/history?limit=5')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const recentChatsContainer = document.getElementById('recentChats');
+                recentChatsContainer.innerHTML = '';
+                
+                if (data.history.length === 0) {
+                    recentChatsContainer.innerHTML = '<p class="text-gray-500 text-sm">No recent conversations</p>';
+                    return;
+                }
+                
+                data.history.forEach(chat => {
+                    const chatItem = document.createElement('div');
+                    chatItem.className = 'cursor-pointer p-2 hover:bg-gray-50 rounded-lg';
+                    chatItem.innerHTML = `
+                        <p class="text-sm text-gray-700 truncate">${chat.message}</p>
+                        <p class="text-xs text-gray-500">${formatDate(chat.timestamp)}</p>
+                    `;
+                    chatItem.addEventListener('click', () => {
+                        document.getElementById('messageInput').value = chat.message;
+                    });
+                    recentChatsContainer.appendChild(chatItem);
+                });
+            }
+        })
+        .catch(error => console.error('Error loading chat history:', error));
+}
+
+// Load current vitals
+function loadCurrentVitals() {
+    fetch('/api/vitals/{{ patient.id }}?hours=1')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.data.length > 0) {
+                const latest = data.data[data.data.length - 1];
+                document.getElementById('current-bp').textContent = `${latest.systolic_bp}/${latest.diastolic_bp}`;
+                document.getElementById('current-hr').textContent = `${latest.heart_rate} bpm`;
+                document.getElementById('current-spo2').textContent = `${latest.spo2}%`;
+                document.getElementById('current-steps').textContent = latest.steps || 0;
+            }
+        })
+        .catch(error => console.error('Error loading vitals:', error));
+}
+
+// Chat form submission
+document.getElementById('chatForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const messageInput = document.getElementById('messageInput');
+    const message = messageInput.value.trim();
+    
+    if (message) {
+        sendMessage(message);
+        messageInput.value = '';
+    }
+});
+
+// Send message to AI
+function sendMessage(message) {
+    // Add user message to chat
+    addMessageToChat(message, 'user');
+    
+    // Show typing indicator
+    showTypingIndicator();
+    
+    // Send to API
+    fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            message: message,
+            session_id: currentSessionId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideTypingIndicator();
+        
+        if (data.success) {
+            addMessageToChat(data.response, 'ai');
+            loadRecentChats(); // Refresh recent chats
+        } else {
+            addMessageToChat('Sorry, I encountered an error. Please try again.', 'ai');
+        }
+    })
+    .catch(error => {
+        hideTypingIndicator();
+        addMessageToChat('Sorry, I encountered an error. Please try again.', 'ai');
+        console.error('Error:', error);
+    });
+}
+
+// Add message to chat container
+function addMessageToChat(message, sender) {
+    const chatContainer = document.getElementById('chatContainer');
+    const messageDiv = document.createElement('div');
+    
+    if (sender === 'user') {
+        messageDiv.className = 'flex items-start space-x-3 justify-end';
+        messageDiv.innerHTML = `
+            <div class="message-bubble user-message text-white p-3 rounded-lg rounded-tr-none">
+                <p>${escapeHtml(message)}</p>
+            </div>
+            <div class="w-8 h-8 bg-gray-400 rounded-full flex items-center justify-center flex-shrink-0">
+                <i class="fas fa-user text-white text-sm"></i>
+            </div>
+        `;
+    } else {
+        messageDiv.className = 'flex items-start space-x-3';
+        messageDiv.innerHTML = `
+            <div class="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center flex-shrink-0">
+                <i class="fas fa-robot text-white text-sm"></i>
+            </div>
+            <div class="message-bubble ai-message text-white p-3 rounded-lg rounded-tl-none">
+                <p>${escapeHtml(message)}</p>
+            </div>
+        `;
+    }
+    
+    // Insert before typing indicator
+    const typingIndicator = document.querySelector('.typing-indicator');
+    chatContainer.insertBefore(messageDiv, typingIndicator);
+    
+    // Scroll to bottom
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+}
+
+// Show/hide typing indicator
+function showTypingIndicator() {
+    document.querySelector('.typing-indicator').classList.add('active');
+    document.getElementById('chatContainer').scrollTop = document.getElementById('chatContainer').scrollHeight;
+}
+
+function hideTypingIndicator() {
+    document.querySelector('.typing-indicator').classList.remove('active');
+}
+
+// Utility functions
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+}
+
+// Clear chat history
+document.getElementById('clearHistory').addEventListener('click', function() {
+    if (confirm('Are you sure you want to clear your chat history?')) {
+        const chatContainer = document.getElementById('chatContainer');
+        const messages = chatContainer.querySelectorAll('.flex:not(.typing-indicator)');
+        
+        // Remove all messages except welcome message
+        for (let i = 1; i < messages.length; i++) {
+            messages[i].remove();
+        }
+        
+        loadRecentChats();
+        currentSessionId = generateSessionId();
+    }
+});
+
+// Real-time vitals updates
+const socket = io();
+
+socket.on('vitals_update', function(data) {
+    if (data.patient_id === {{ patient.id }}) {
+        const vitals = data.vitals;
+        document.getElementById('current-bp').textContent = `${vitals.systolic_bp}/${vitals.diastolic_bp}`;
+        document.getElementById('current-hr').textContent = `${vitals.heart_rate} bpm`;
+        document.getElementById('current-spo2').textContent = `${vitals.spo2}%`;
+        document.getElementById('current-steps').textContent = vitals.steps || 0;
+    }
+});
+</script>
+{% endblock %}

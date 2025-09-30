@@ -1,0 +1,462 @@
+{% extends "base.html" %}
+
+{% block title %}Patient Dashboard - ChroniSense{% endblock %}
+
+{% block head %}
+<style>
+    .vitals-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .vitals-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    }
+    .chart-container {
+        position: relative;
+        height: 300px;
+    }
+    .status-indicator {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 8px;
+    }
+    .status-normal { background-color: #10B981; }
+    .status-warning { background-color: #F59E0B; }
+    .status-critical { background-color: #EF4444; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Header -->
+    <div class="mb-8">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900">
+                    Welcome back, {{ patient.first_name }}!
+                </h1>
+                <p class="text-gray-600 mt-1">Monitor your health vitals and get personalized insights</p>
+            </div>
+            <div class="flex space-x-4">
+                <button id="startSimulation" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors">
+                    <i class="fas fa-play mr-2"></i>Start Simulation
+                </button>
+                <button id="stopSimulation" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors">
+                    <i class="fas fa-stop mr-2"></i>Stop Simulation
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Stats Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <!-- Blood Pressure -->
+        <div class="vitals-card text-white p-6 rounded-2xl">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-white/80 text-sm">Blood Pressure</p>
+                    <p class="text-2xl font-bold" id="current-bp">
+                        {% if latest_vitals %}
+                            {{ latest_vitals.systolic_bp }}/{{ latest_vitals.diastolic_bp }}
+                        {% else %}
+                            --/--
+                        {% endif %}
+                    </p>
+                    <p class="text-white/60 text-xs">
+                        <span class="status-indicator" id="bp-status"></span>
+                        <span id="bp-status-text">Normal</span>
+                    </p>
+                </div>
+                <i class="fas fa-heart text-3xl text-white/60"></i>
+            </div>
+        </div>
+
+        <!-- Heart Rate -->
+        <div class="vitals-card text-white p-6 rounded-2xl" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-white/80 text-sm">Heart Rate</p>
+                    <p class="text-2xl font-bold" id="current-hr">
+                        {% if latest_vitals %}
+                            {{ latest_vitals.heart_rate }}
+                        {% else %}
+                            --
+                        {% endif %}
+                    </p>
+                    <p class="text-white/60 text-xs">
+                        <span class="status-indicator" id="hr-status"></span>
+                        <span id="hr-status-text">bpm</span>
+                    </p>
+                </div>
+                <i class="fas fa-heartbeat text-3xl text-white/60"></i>
+            </div>
+        </div>
+
+        <!-- Oxygen Saturation -->
+        <div class="vitals-card text-white p-6 rounded-2xl" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-white/80 text-sm">Oxygen Saturation</p>
+                    <p class="text-2xl font-bold" id="current-spo2">
+                        {% if latest_vitals %}
+                            {{ latest_vitals.spo2 }}%
+                        {% else %}
+                            --%
+                        {% endif %}
+                    </p>
+                    <p class="text-white/60 text-xs">
+                        <span class="status-indicator" id="spo2-status"></span>
+                        <span id="spo2-status-text">Normal</span>
+                    </p>
+                </div>
+                <i class="fas fa-lungs text-3xl text-white/60"></i>
+            </div>
+        </div>
+
+        <!-- Daily Steps -->
+        <div class="vitals-card text-white p-6 rounded-2xl" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-white/80 text-sm">Daily Steps</p>
+                    <p class="text-2xl font-bold" id="current-steps">
+                        {% if daily_stats.total_steps %}
+                            {{ daily_stats.total_steps }}
+                        {% else %}
+                            0
+                        {% endif %}
+                    </p>
+                    <p class="text-white/60 text-xs">Goal: 6,000 steps</p>
+                </div>
+                <i class="fas fa-walking text-3xl text-white/60"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts and Recent Data -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        <!-- Vitals Chart -->
+        <div class="bg-white rounded-2xl shadow-lg p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold text-gray-900">Vitals Trends (24h)</h3>
+                <div class="flex space-x-2">
+                    <button class="chart-toggle bg-blue-100 text-blue-600 px-3 py-1 rounded-lg text-sm" data-chart="bp">BP</button>
+                    <button class="chart-toggle bg-gray-100 text-gray-600 px-3 py-1 rounded-lg text-sm" data-chart="hr">HR</button>
+                    <button class="chart-toggle bg-gray-100 text-gray-600 px-3 py-1 rounded-lg text-sm" data-chart="spo2">SpO2</button>
+                </div>
+            </div>
+            <div class="chart-container">
+                <canvas id="vitalsChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Recent Insights -->
+        <div class="bg-white rounded-2xl shadow-lg p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold text-gray-900">Recent Insights</h3>
+                <a href="{{ url_for('main.electrobook') }}" class="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                    View All <i class="fas fa-arrow-right ml-1"></i>
+                </a>
+            </div>
+            
+            <div class="space-y-4">
+                {% if recent_insights %}
+                    {% for insight in recent_insights %}
+                        <div class="border-l-4 {% if insight.severity == 'critical' %}border-red-500{% elif insight.severity == 'warning' %}border-yellow-500{% else %}border-blue-500{% endif %} pl-4 py-2">
+                            <h4 class="font-medium text-gray-900">{{ insight.title }}</h4>
+                            <p class="text-gray-600 text-sm mt-1">{{ insight.content[:100] }}...</p>
+                            <p class="text-gray-400 text-xs mt-1">{{ insight.created_at.strftime('%B %d, %Y') }}</p>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-center py-8 text-gray-500">
+                        <i class="fas fa-lightbulb text-4xl mb-4"></i>
+                        <p>No insights available yet.</p>
+                        <p class="text-sm">Start generating vitals data to receive personalized insights.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- Chat with AI -->
+        <div class="bg-gradient-to-r from-purple-500 to-pink-500 text-white p-6 rounded-2xl">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-lg font-semibold mb-2">AI Health Coach</h3>
+                    <p class="text-white/80 text-sm mb-4">Get personalized health advice and tips</p>
+                    <a href="{{ url_for('main.chatbot_page') }}" class="bg-white text-purple-600 hover:bg-gray-100 px-4 py-2 rounded-lg text-sm font-medium inline-flex items-center">
+                        <i class="fas fa-robot mr-2"></i>
+                        Start Chat
+                    </a>
+                </div>
+                <i class="fas fa-comments text-4xl text-white/60"></i>
+            </div>
+        </div>
+
+        <!-- View Detailed History -->
+        <div class="bg-gradient-to-r from-blue-500 to-cyan-500 text-white p-6 rounded-2xl">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-lg font-semibold mb-2">Vitals History</h3>
+                    <p class="text-white/80 text-sm mb-4">View detailed health trends and patterns</p>
+                    <a href="{{ url_for('main.vitals_history') }}" class="bg-white text-blue-600 hover:bg-gray-100 px-4 py-2 rounded-lg text-sm font-medium inline-flex items-center">
+                        <i class="fas fa-chart-line mr-2"></i>
+                        View History
+                    </a>
+                </div>
+                <i class="fas fa-history text-4xl text-white/60"></i>
+            </div>
+        </div>
+
+        <!-- Emergency Contact -->
+        <div class="bg-gradient-to-r from-red-500 to-orange-500 text-white p-6 rounded-2xl">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-lg font-semibold mb-2">Emergency</h3>
+                    <p class="text-white/80 text-sm mb-4">Contact emergency services if needed</p>
+                    <button class="bg-white text-red-600 hover:bg-gray-100 px-4 py-2 rounded-lg text-sm font-medium inline-flex items-center">
+                        <i class="fas fa-phone mr-2"></i>
+                        Call 911
+                    </button>
+                </div>
+                <i class="fas fa-ambulance text-4xl text-white/60"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Real-time Updates -->
+<div id="alertModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-lg p-6 max-w-md mx-4">
+        <div class="flex items-center mb-4">
+            <i class="fas fa-exclamation-triangle text-red-500 text-2xl mr-3"></i>
+            <h3 class="text-lg font-semibold text-gray-900">Health Alert</h3>
+        </div>
+        <p id="alertMessage" class="text-gray-600 mb-4"></p>
+        <div class="flex justify-end space-x-3">
+            <button id="dismissAlert" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400">
+                Dismiss
+            </button>
+            <button class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
+                Contact Doctor
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let vitalsChart;
+let currentChartType = 'bp';
+
+// Initialize chart
+function initializeChart() {
+    const ctx = document.getElementById('vitalsChart').getContext('2d');
+    vitalsChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'Blood Pressure (Systolic)',
+                data: [],
+                borderColor: 'rgb(99, 102, 241)',
+                backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: false
+                }
+            }
+        }
+    });
+    
+    loadVitalsData();
+}
+
+// Load vitals data
+function loadVitalsData() {
+    fetch('/api/vitals/{{ patient.id }}?hours=24')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                updateChart(data.data);
+            }
+        })
+        .catch(error => console.error('Error loading vitals:', error));
+}
+
+// Update chart with new data
+function updateChart(vitalsData) {
+    const labels = vitalsData.map(v => new Date(v.timestamp).toLocaleTimeString());
+    
+    let dataset = {};
+    switch(currentChartType) {
+        case 'bp':
+            dataset = {
+                label: 'Blood Pressure (Systolic)',
+                data: vitalsData.map(v => v.systolic_bp),
+                borderColor: 'rgb(99, 102, 241)',
+                backgroundColor: 'rgba(99, 102, 241, 0.1)'
+            };
+            break;
+        case 'hr':
+            dataset = {
+                label: 'Heart Rate (bpm)',
+                data: vitalsData.map(v => v.heart_rate),
+                borderColor: 'rgb(239, 68, 68)',
+                backgroundColor: 'rgba(239, 68, 68, 0.1)'
+            };
+            break;
+        case 'spo2':
+            dataset = {
+                label: 'Oxygen Saturation (%)',
+                data: vitalsData.map(v => v.spo2),
+                borderColor: 'rgb(34, 197, 94)',
+                backgroundColor: 'rgba(34, 197, 94, 0.1)'
+            };
+            break;
+    }
+    
+    vitalsChart.data.labels = labels;
+    vitalsChart.data.datasets[0] = dataset;
+    vitalsChart.update();
+}
+
+// Chart toggle buttons
+document.querySelectorAll('.chart-toggle').forEach(button => {
+    button.addEventListener('click', function() {
+        // Update active state
+        document.querySelectorAll('.chart-toggle').forEach(btn => {
+            btn.classList.remove('bg-blue-100', 'text-blue-600');
+            btn.classList.add('bg-gray-100', 'text-gray-600');
+        });
+        this.classList.remove('bg-gray-100', 'text-gray-600');
+        this.classList.add('bg-blue-100', 'text-blue-600');
+        
+        // Update chart
+        currentChartType = this.dataset.chart;
+        loadVitalsData();
+    });
+});
+
+// Real-time updates via WebSocket
+const socket = io();
+
+socket.on('vitals_update', function(data) {
+    if (data.patient_id === {{ patient.id }}) {
+        updateVitalsDisplay(data.vitals);
+        loadVitalsData(); // Refresh chart
+    }
+});
+
+socket.on('critical_alert', function(data) {
+    if (data.patient_id === {{ patient.id }}) {
+        showAlert(data.message);
+        showNotification('Health Alert', data.message, 'warning');
+    }
+});
+
+// Update vitals display
+function updateVitalsDisplay(vitals) {
+    document.getElementById('current-bp').textContent = `${vitals.systolic_bp}/${vitals.diastolic_bp}`;
+    document.getElementById('current-hr').textContent = vitals.heart_rate;
+    document.getElementById('current-spo2').textContent = `${vitals.spo2}%`;
+    
+    // Update status indicators
+    updateStatusIndicator('bp', vitals.systolic_bp, 140);
+    updateStatusIndicator('hr', vitals.heart_rate, 100);
+    updateStatusIndicator('spo2', vitals.spo2, 95);
+}
+
+// Update status indicators
+function updateStatusIndicator(type, value, threshold) {
+    const indicator = document.getElementById(`${type}-status`);
+    const text = document.getElementById(`${type}-status-text`);
+    
+    if (type === 'spo2') {
+        if (value < threshold) {
+            indicator.className = 'status-indicator status-critical';
+            text.textContent = 'Low';
+        } else {
+            indicator.className = 'status-indicator status-normal';
+            text.textContent = 'Normal';
+        }
+    } else {
+        if (value > threshold) {
+            indicator.className = 'status-indicator status-warning';
+            text.textContent = type === 'bp' ? 'Elevated' : 'High';
+        } else {
+            indicator.className = 'status-indicator status-normal';
+            text.textContent = 'Normal';
+        }
+    }
+}
+
+// Show alert modal
+function showAlert(message) {
+    document.getElementById('alertMessage').textContent = message;
+    document.getElementById('alertModal').classList.remove('hidden');
+    document.getElementById('alertModal').classList.add('flex');
+}
+
+// Dismiss alert
+document.getElementById('dismissAlert').addEventListener('click', function() {
+    document.getElementById('alertModal').classList.add('hidden');
+    document.getElementById('alertModal').classList.remove('flex');
+});
+
+// Simulation controls
+document.getElementById('startSimulation').addEventListener('click', function() {
+    fetch('/api/simulator/start', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            patient_id: {{ patient.id }}
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification('Simulation Started', 'Vitals simulation is now running');
+        }
+    });
+});
+
+document.getElementById('stopSimulation').addEventListener('click', function() {
+    fetch('/api/simulator/stop', {
+        method: 'POST'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification('Simulation Stopped', 'Vitals simulation has been stopped');
+        }
+    });
+});
+
+// Initialize everything when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    initializeChart();
+    
+    // Load initial vitals status
+    {% if latest_vitals %}
+        updateStatusIndicator('bp', {{ latest_vitals.systolic_bp }}, 140);
+        updateStatusIndicator('hr', {{ latest_vitals.heart_rate }}, 100);
+        updateStatusIndicator('spo2', {{ latest_vitals.spo2 }}, 95);
+    {% endif %}
+});
+</script>
+{% endblock %}
