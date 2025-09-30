@@ -8,6 +8,9 @@ from app.services.vitals_simulator import simulator
 from app import db
 from datetime import datetime, timedelta, timezone
 import uuid
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Helper function for naive UTC datetime (for DB compatibility)
 def utc_now():
@@ -17,6 +20,7 @@ bp = Blueprint('api', __name__, url_prefix='/api')
 
 @bp.route('/vitals/<int:patient_id>')
 @login_required
+    logger.info(f"get_vitals called for patient_id={patient_id} by user={current_user.username}")
 def get_vitals(patient_id):
     """Get vitals data for a patient"""
     try:

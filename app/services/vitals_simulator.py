@@ -7,6 +7,9 @@ from app import db, socketio
 from app.models.vitals import VitalSigns
 from app.models.patient import Patient
 import requests
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Helper function for naive UTC datetime (for DB compatibility)
 def utc_now():
@@ -14,6 +17,7 @@ def utc_now():
 
 class VitalsSimulator:
     def __init__(self):
+        logger.info("Initializing VitalsSimulator")
         self.running = False
         self.base_vitals = {
             'heart_rate': 75,
@@ -25,10 +29,12 @@ class VitalsSimulator:
         
     def start_simulation(self, patient_id=1):
         """Start continuous vitals simulation for a patient"""
+        logger.info(f"Starting vitals simulation for patient_id={patient_id}")
         self.running = True
         self.patient_id = patient_id
         
         def simulate():
+            logger.debug(f"Simulation thread started for patient_id={patient_id}")
             while self.running:
                 try:
                     vitals = self.generate_realistic_vitals()
@@ -38,8 +44,9 @@ class VitalsSimulator:
                     # Sleep for 30 seconds (simulate data every 30s)
                     time.sleep(30)
                 except Exception as e:
-                    print(f"Simulation error: {e}")
+                    logger.error(f"Simulation error for patient_id={patient_id}: {e}", exc_info=True)
                     time.sleep(5)
+            logger.info(f"Simulation thread stopped for patient_id={patient_id}")
         
         thread = Thread(target=simulate)
         thread.daemon = True
@@ -97,9 +104,10 @@ class VitalsSimulator:
             
             db.session.add(vitals)
             db.session.commit()
+            logger.debug(f"Vitals saved to database: id={vitals.id}, patient_id={self.patient_id}")
             
         except Exception as e:
-            print(f"Error saving vitals: {e}")
+            logger.error(f"Error saving vitals for patient_id={self.patient_id}: {e}", exc_info=True)
             db.session.rollback()
     
     def emit_realtime_data(self, vitals_data):
@@ -111,6 +119,7 @@ class VitalsSimulator:
                 'timestamp': vitals_data['timestamp'].isoformat()
             }
             socketio.emit('vitals_update', data, namespace='/realtime')
+            logger.debug(f"Emitted vitals update via WebSocket for patient_id={self.patient_id}")
             
             # Check for alerts
             if self.check_alert_conditions(vitals_data):
@@ -122,9 +131,10 @@ class VitalsSimulator:
                     'timestamp': vitals_data['timestamp'].isoformat()
                 }
                 socketio.emit('critical_alert', alert_data, namespace='/alerts')
+                logger.warning(f"Critical alert emitted for patient_id={self.patient_id}: {alert_data['message']}")
                 
         except Exception as e:
-            print(f"Error emitting real-time data: {e}")
+            logger.error(f"Error emitting real-time data for patient_id={self.patient_id}: {e}", exc_info=True)
     
     def check_alert_conditions(self, vitals):
         """Check if vitals trigger any alerts"""
@@ -154,6 +164,7 @@ class VitalsSimulator:
     
     def inject_anomaly(self, anomaly_type="hypertension"):
         """Manually inject an anomaly for testing"""
+        logger.info(f"Injecting anomaly: type={anomaly_type}")
         if anomaly_type == "hypertension":
             self.base_vitals['systolic_bp'] = 190
             self.base_vitals['diastolic_bp'] = 110
@@ -162,6 +173,8 @@ class VitalsSimulator:
         elif anomaly_type == "hypoxia":
             self.base_vitals['spo2'] = 85
             
+        logger.info(f"Anomaly injected successfully: {anomaly_type}")
+        
         # Reset after 5 minutes
         def reset_vitals():
             time.sleep(300)  # 5 minutes
@@ -172,12 +185,15 @@ class VitalsSimulator:
                 'spo2': 98.0,
                 'temperature': 98.6
             }
+            logger.info("Vitals reset to normal after anomaly test")
             
         Thread(target=reset_vitals, daemon=True).start()
     
     def stop_simulation(self):
         """Stop the simulation"""
+        logger.info(f"Stopping vitals simulation for patient_id={getattr(self, 'patient_id', 'unknown')}")
         self.running = False
 
 # Global simulator instance
+logger.info("Creating global VitalsSimulator instance")
 simulator = VitalsSimulator()
