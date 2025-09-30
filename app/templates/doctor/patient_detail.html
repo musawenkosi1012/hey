@@ -1,0 +1,203 @@
+{% extends "base.html" %}
+
+{% block title %}Patient Details - ChroniSense{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Header -->
+    <div class="mb-8 flex items-center justify-between">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900">Patient: {{ patient.full_name }}</h1>
+            <p class="text-gray-600 mt-1">Patient ID: #{{ patient.id }}</p>
+        </div>
+        <a href="{{ url_for('doctor.patients_list') }}" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+            <i class="fas fa-arrow-left mr-2"></i>Back to Patients
+        </a>
+    </div>
+
+    <!-- Patient Info Card -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        <!-- Contact Info -->
+        <div class="bg-white shadow-lg rounded-lg p-6">
+            <h3 class="text-lg font-bold text-gray-900 mb-4">Contact Information</h3>
+            <div class="space-y-3">
+                <div>
+                    <label class="text-sm text-gray-500">Phone</label>
+                    <p class="text-gray-900">{{ patient.phone or 'Not provided' }}</p>
+                </div>
+                <div>
+                    <label class="text-sm text-gray-500">Emergency Contact</label>
+                    <p class="text-gray-900">{{ patient.emergency_contact or 'Not provided' }}</p>
+                </div>
+                <div>
+                    <label class="text-sm text-gray-500">Gender</label>
+                    <p class="text-gray-900 capitalize">{{ patient.gender }}</p>
+                </div>
+                <div>
+                    <label class="text-sm text-gray-500">Date of Birth</label>
+                    <p class="text-gray-900">{{ patient.date_of_birth.strftime('%B %d, %Y') }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Risk Prediction -->
+        {% if latest_risk %}
+        <div class="bg-white shadow-lg rounded-lg p-6">
+            <h3 class="text-lg font-bold text-gray-900 mb-4">Risk Assessment</h3>
+            <div class="space-y-3">
+                <div>
+                    <label class="text-sm text-gray-500">6-hour Risk</label>
+                    <div class="flex items-center">
+                        <div class="flex-1 bg-gray-200 rounded-full h-2 mr-3">
+                            <div class="bg-{% if latest_risk.risk_6h < 30 %}green{% elif latest_risk.risk_6h < 70 %}yellow{% else %}red{% endif %}-600 h-2 rounded-full" style="width: {{ latest_risk.risk_6h }}%"></div>
+                        </div>
+                        <span class="text-lg font-bold">{{ "%.1f"|format(latest_risk.risk_6h) }}%</span>
+                    </div>
+                </div>
+                <div>
+                    <label class="text-sm text-gray-500">24-hour Risk</label>
+                    <div class="flex items-center">
+                        <div class="flex-1 bg-gray-200 rounded-full h-2 mr-3">
+                            <div class="bg-{% if latest_risk.risk_24h < 30 %}green{% elif latest_risk.risk_24h < 70 %}yellow{% else %}red{% endif %}-600 h-2 rounded-full" style="width: {{ latest_risk.risk_24h }}%"></div>
+                        </div>
+                        <span class="text-lg font-bold">{{ "%.1f"|format(latest_risk.risk_24h) }}%</span>
+                    </div>
+                </div>
+                <div>
+                    <label class="text-sm text-gray-500">72-hour Risk</label>
+                    <div class="flex items-center">
+                        <div class="flex-1 bg-gray-200 rounded-full h-2 mr-3">
+                            <div class="bg-{% if latest_risk.risk_72h < 30 %}green{% elif latest_risk.risk_72h < 70 %}yellow{% else %}red{% endif %}-600 h-2 rounded-full" style="width: {{ latest_risk.risk_72h }}%"></div>
+                        </div>
+                        <span class="text-lg font-bold">{{ "%.1f"|format(latest_risk.risk_72h) }}%</span>
+                    </div>
+                </div>
+                <div class="text-xs text-gray-500">
+                    Updated: {{ latest_risk.created_at.strftime('%Y-%m-%d %H:%M') }}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Weekly Stats -->
+        {% if weekly_stats %}
+        <div class="bg-white shadow-lg rounded-lg p-6">
+            <h3 class="text-lg font-bold text-gray-900 mb-4">Weekly Averages</h3>
+            <div class="space-y-3">
+                <div>
+                    <label class="text-sm text-gray-500">Blood Pressure</label>
+                    <p class="text-2xl font-bold text-gray-900">{{ "%.0f/%.0f"|format(weekly_stats.avg_bp_sys, weekly_stats.avg_bp_dia) }}</p>
+                </div>
+                <div>
+                    <label class="text-sm text-gray-500">Heart Rate</label>
+                    <p class="text-2xl font-bold text-gray-900">{{ "%.0f"|format(weekly_stats.avg_hr) }} bpm</p>
+                </div>
+                <div>
+                    <label class="text-sm text-gray-500">SpO2</label>
+                    <p class="text-2xl font-bold text-gray-900">{{ "%.1f"|format(weekly_stats.avg_spo2) }}%</p>
+                </div>
+                <div>
+                    <label class="text-sm text-gray-500">Total Steps</label>
+                    <p class="text-2xl font-bold text-gray-900">{{ "{:,}".format(weekly_stats.total_steps|int) }}</p>
+                </div>
+                <div>
+                    <label class="text-sm text-gray-500">Anomalies</label>
+                    <p class="text-2xl font-bold text-{% if weekly_stats.anomaly_count > 5 %}red{% elif weekly_stats.anomaly_count > 2 %}yellow{% else %}green{% endif %}-600">{{ weekly_stats.anomaly_count }}</p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Recent Insights -->
+    {% if insights %}
+    <div class="bg-white shadow-lg rounded-lg overflow-hidden mb-8">
+        <div class="bg-gradient-to-r from-purple-600 to-blue-600 px-6 py-4">
+            <h2 class="text-xl font-bold text-white">Recent Insights</h2>
+        </div>
+        <div class="p-6">
+            <div class="space-y-4">
+                {% for insight in insights[:5] %}
+                <div class="border-l-4 {% if insight.severity == 'critical' %}border-red-500{% elif insight.severity == 'warning' %}border-yellow-500{% else %}border-blue-500{% endif %} pl-4 py-2">
+                    <div class="flex items-center justify-between mb-2">
+                        <h4 class="font-bold text-gray-900">{{ insight.title }}</h4>
+                        <span class="text-sm text-gray-500">{{ insight.created_at.strftime('%Y-%m-%d') }}</span>
+                    </div>
+                    <p class="text-gray-700">{{ insight.content }}</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Recent Vitals Chart -->
+    <div class="bg-white shadow-lg rounded-lg overflow-hidden">
+        <div class="bg-gradient-to-r from-green-600 to-teal-600 px-6 py-4">
+            <h2 class="text-xl font-bold text-white">Recent Vitals (7 Days)</h2>
+        </div>
+        <div class="p-6">
+            <canvas id="vitalsChart" height="80"></canvas>
+        </div>
+    </div>
+</div>
+
+<script>
+// Prepare data for chart
+const vitalsData = {{ recent_vitals|tojson }};
+
+const timestamps = vitalsData.map(v => new Date(v.timestamp).toLocaleDateString());
+const bpSystolic = vitalsData.map(v => v.systolic_bp);
+const heartRate = vitalsData.map(v => v.heart_rate);
+const spo2 = vitalsData.map(v => v.spo2);
+
+// Create chart
+const ctx = document.getElementById('vitalsChart').getContext('2d');
+new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: timestamps.slice(-50),
+        datasets: [
+            {
+                label: 'Blood Pressure (Systolic)',
+                data: bpSystolic.slice(-50),
+                borderColor: 'rgb(239, 68, 68)',
+                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                tension: 0.4
+            },
+            {
+                label: 'Heart Rate',
+                data: heartRate.slice(-50),
+                borderColor: 'rgb(59, 130, 246)',
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                tension: 0.4
+            },
+            {
+                label: 'SpO2',
+                data: spo2.slice(-50),
+                borderColor: 'rgb(16, 185, 129)',
+                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                tension: 0.4
+            }
+        ]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+            legend: {
+                position: 'top',
+            },
+            title: {
+                display: false
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: false
+            }
+        }
+    }
+});
+</script>
+{% endblock %}

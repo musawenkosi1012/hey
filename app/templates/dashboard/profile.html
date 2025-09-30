@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+
+{% block title %}Patient Profile - ChroniSense{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Header -->
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900">Patient Profile</h1>
+        <p class="text-gray-600 mt-1">View and manage your medical information</p>
+    </div>
+
+    <!-- Personal Information -->
+    <div class="bg-white shadow-lg rounded-lg overflow-hidden mb-6">
+        <div class="bg-gradient-to-r from-blue-600 to-purple-600 px-6 py-4">
+            <h2 class="text-xl font-bold text-white">Personal Information</h2>
+        </div>
+        <div class="p-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label class="text-sm font-medium text-gray-500">Full Name</label>
+                    <p class="mt-1 text-lg text-gray-900">{{ patient.full_name }}</p>
+                </div>
+                <div>
+                    <label class="text-sm font-medium text-gray-500">Patient ID</label>
+                    <p class="mt-1 text-lg text-gray-900">#{{ patient.id }}</p>
+                </div>
+                <div>
+                    <label class="text-sm font-medium text-gray-500">Date of Birth</label>
+                    <p class="mt-1 text-lg text-gray-900">{{ patient.date_of_birth.strftime('%B %d, %Y') }}</p>
+                </div>
+                <div>
+                    <label class="text-sm font-medium text-gray-500">Gender</label>
+                    <p class="mt-1 text-lg text-gray-900 capitalize">{{ patient.gender }}</p>
+                </div>
+                <div>
+                    <label class="text-sm font-medium text-gray-500">Phone Number</label>
+                    <p class="mt-1 text-lg text-gray-900">
+                        {% if patient.phone %}
+                            <i class="fas fa-phone mr-2 text-blue-600"></i>{{ patient.phone }}
+                        {% else %}
+                            <span class="text-gray-400">Not provided</span>
+                        {% endif %}
+                    </p>
+                </div>
+                <div>
+                    <label class="text-sm font-medium text-gray-500">Emergency Contact</label>
+                    <p class="mt-1 text-lg text-gray-900">
+                        {% if patient.emergency_contact %}
+                            <i class="fas fa-ambulance mr-2 text-red-600"></i>{{ patient.emergency_contact }}
+                        {% else %}
+                            <span class="text-gray-400">Not provided</span>
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Medical Information -->
+    <div class="bg-white shadow-lg rounded-lg overflow-hidden mb-6">
+        <div class="bg-gradient-to-r from-green-600 to-teal-600 px-6 py-4">
+            <h2 class="text-xl font-bold text-white">Medical Information</h2>
+        </div>
+        <div class="p-6">
+            <!-- Conditions -->
+            <div class="mb-6">
+                <label class="text-sm font-medium text-gray-500 block mb-2">
+                    <i class="fas fa-notes-medical mr-2 text-green-600"></i>Medical Conditions
+                </label>
+                {% if conditions %}
+                    <div class="flex flex-wrap gap-2">
+                        {% for condition, value in conditions.items() %}
+                            {% if value %}
+                                <span class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
+                                    {{ condition|replace('_', ' ')|title }}
+                                </span>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="text-gray-400">No conditions recorded</p>
+                {% endif %}
+            </div>
+
+            <!-- Medications -->
+            <div class="mb-6">
+                <label class="text-sm font-medium text-gray-500 block mb-2">
+                    <i class="fas fa-pills mr-2 text-blue-600"></i>Current Medications
+                </label>
+                {% if medications %}
+                    <div class="space-y-2">
+                        {% for medication, dosage in medications.items() %}
+                            <div class="flex items-center bg-blue-50 px-4 py-2 rounded-lg">
+                                <i class="fas fa-prescription-bottle text-blue-600 mr-3"></i>
+                                <div>
+                                    <p class="font-medium text-gray-900">{{ medication|title }}</p>
+                                    <p class="text-sm text-gray-600">{{ dosage }}</p>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="text-gray-400">No medications recorded</p>
+                {% endif %}
+            </div>
+
+            <!-- Allergies -->
+            <div>
+                <label class="text-sm font-medium text-gray-500 block mb-2">
+                    <i class="fas fa-exclamation-triangle mr-2 text-red-600"></i>Allergies
+                </label>
+                {% if allergies %}
+                    <div class="space-y-2">
+                        {% for allergen, reaction in allergies.items() %}
+                            <div class="flex items-center bg-red-50 px-4 py-2 rounded-lg">
+                                <i class="fas fa-allergies text-red-600 mr-3"></i>
+                                <div>
+                                    <p class="font-medium text-gray-900">{{ allergen|title }}</p>
+                                    <p class="text-sm text-gray-600">{{ reaction }}</p>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="text-gray-400">No known allergies</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Alert Thresholds -->
+    <div class="bg-white shadow-lg rounded-lg overflow-hidden mb-6">
+        <div class="bg-gradient-to-r from-orange-600 to-red-600 px-6 py-4">
+            <h2 class="text-xl font-bold text-white">Alert Thresholds</h2>
+        </div>
+        <div class="p-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="bg-orange-50 px-4 py-3 rounded-lg">
+                    <label class="text-sm font-medium text-gray-500 block mb-1">Blood Pressure Max</label>
+                    <p class="text-2xl font-bold text-orange-700">{{ patient.bp_systolic_max }}/{{ patient.bp_diastolic_max }}</p>
+                    <p class="text-xs text-gray-600 mt-1">mmHg</p>
+                </div>
+                <div class="bg-red-50 px-4 py-3 rounded-lg">
+                    <label class="text-sm font-medium text-gray-500 block mb-1">Heart Rate Range</label>
+                    <p class="text-2xl font-bold text-red-700">{{ patient.heart_rate_min }}-{{ patient.heart_rate_max }}</p>
+                    <p class="text-xs text-gray-600 mt-1">bpm</p>
+                </div>
+                <div class="bg-blue-50 px-4 py-3 rounded-lg">
+                    <label class="text-sm font-medium text-gray-500 block mb-1">SpO2 Minimum</label>
+                    <p class="text-2xl font-bold text-blue-700">{{ patient.spo2_min }}%</p>
+                    <p class="text-xs text-gray-600 mt-1">Oxygen saturation</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Back Button -->
+    <div class="flex justify-center">
+        <a href="{{ url_for('main.patient_dashboard') }}" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors">
+            <i class="fas fa-arrow-left mr-2"></i>Back to Dashboard
+        </a>
+    </div>
+</div>
+{% endblock %}

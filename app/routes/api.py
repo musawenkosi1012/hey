@@ -157,6 +157,7 @@ def get_chat_history():
         
         return jsonify({
             'success': True,
+            'patient_id': patient.id,
             'history': history
         })
         
@@ -179,6 +180,7 @@ def get_chat_suggestions():
         
         return jsonify({
             'success': True,
+            'patient_id': patient.id,
             'suggestions': suggestions
         })
         
@@ -266,11 +268,127 @@ def get_health_tips(patient_id):
         
         return jsonify({
             'success': True,
+            'patient_id': patient_id,
             'tips': tips,
             'category': category
         })
         
     except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@bp.route('/patient/profile/<int:patient_id>')
+@login_required
+def get_patient_profile(patient_id):
+    """Get detailed patient profile information"""
+    try:
+        # Check authorization
+        if current_user.role == 'patient':
+            patient = Patient.query.filter_by(user_id=current_user.id, id=patient_id).first()
+            if not patient:
+                return jsonify({'error': 'Unauthorized'}), 403
+        elif current_user.role not in ['doctor', 'caregiver']:
+            return jsonify({'error': 'Unauthorized'}), 403
+        else:
+            patient = Patient.query.get(patient_id)
+            if not patient:
+                return jsonify({'error': 'Patient not found'}), 404
+        
+        # Build profile response
+        import json
+        from datetime import date
+        
+        # Calculate age
+        today = date.today()
+        age = today.year - patient.date_of_birth.year - ((today.month, today.day) < (patient.date_of_birth.month, patient.date_of_birth.day))
+        
+        profile = {
+            'success': True,
+            'patient_id': patient.id,
+            'personal_info': {
+                'first_name': patient.first_name,
+                'last_name': patient.last_name,
+                'full_name': patient.full_name,
+                'date_of_birth': patient.date_of_birth.isoformat(),
+                'age': age,
+                'gender': patient.gender,
+                'phone': patient.phone,
+                'emergency_contact': patient.emergency_contact
+            },
+            'medical_info': {
+                'conditions': json.loads(patient.conditions) if patient.conditions else None,
+                'medications': json.loads(patient.medications) if patient.medications else None,
+                'allergies': json.loads(patient.allergies) if patient.allergies else None
+            },
+            'thresholds': {
+                'bp_systolic_max': patient.bp_systolic_max,
+                'bp_diastolic_max': patient.bp_diastolic_max,
+                'heart_rate_min': patient.heart_rate_min,
+                'heart_rate_max': patient.heart_rate_max,
+                'spo2_min': patient.spo2_min
+            }
+        }
+        
+        return jsonify(profile)
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+@bp.route('/sleep-data/<int:patient_id>')
+@login_required
+def get_sleep_data(patient_id):
+    """Get sleep data for a patient"""
+    try:
+        # Check authorization
+        if current_user.role == 'patient':
+            patient = Patient.query.filter_by(user_id=current_user.id, id=patient_id).first()
+            if not patient:
+                return jsonify({'error': 'Unauthorized'}), 403
+        
+        # Get query parameters
+        days = request.args.get('days', 7, type=int)
+        start_time = utc_now() - timedelta(days=days)
+        
+        # Get vitals with sleep data
+        vitals = VitalSigns.query.filter(
+            VitalSigns.patient_id == patient_id,
+            VitalSigns.timestamp >= start_time,
+            VitalSigns.sleep_hours.isnot(None)
+        ).order_by(VitalSigns.timestamp.desc()).all()
+        
+        sleep_data = []
+        for v in vitals:
+            sleep_data.append({
+                'date': v.timestamp.date().isoformat(),
+                'sleep_hours': v.sleep_hours,
+                'sleep_quality': v.sleep_quality,
+                'timestamp': v.timestamp.isoformat()
+            })
+        
+        # Calculate sleep statistics
+        avg_sleep = sum(v.sleep_hours for v in vitals if v.sleep_hours) / len(vitals) if vitals else 0
+        
+        quality_counts = {}
+        for v in vitals:
+            if v.sleep_quality:
+                quality_counts[v.sleep_quality] = quality_counts.get(v.sleep_quality, 0) + 1
+        
+        return jsonify({
+            'success': True,
+            'patient_id': patient_id,
+            'sleep_records': sleep_data,
+            'statistics': {
+                'average_hours': round(avg_sleep, 1),
+                'total_nights': len(vitals),
+                'quality_distribution': quality_counts
+            },
+            'period_days': days
+        })
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 @bp.route('/web-knowledge')
@@ -396,6 +514,46 @@ def get_health_summary_report(patient_id):
         today = date.today()
         age = today.year - patient.date_of_birth.year - ((today.month, today.day) < (patient.date_of_birth.month, patient.date_of_birth.day))
         
+        # Parse medical information
+        import json
+        conditions = None
+        medications = None
+        allergies = None
+        
+        try:
+            if patient.conditions:
+                conditions = json.loads(patient.conditions)
+        except:
+            conditions = patient.conditions
+        
+        try:
+            if patient.medications:
+                medications = json.loads(patient.medications)
+        except:
+            medications = patient.medications
+        
+        try:
+            if patient.allergies:
+                allergies = json.loads(patient.allergies)
+        except:
+            allergies = patient.allergies
+        
+        # Get sleep data
+        sleep_vitals = [v for v in vitals if v.sleep_hours is not None]
+        sleep_stats = None
+        if sleep_vitals:
+            avg_sleep = sum(v.sleep_hours for v in sleep_vitals) / len(sleep_vitals)
+            quality_counts = {}
+            for v in sleep_vitals:
+                if v.sleep_quality:
+                    quality_counts[v.sleep_quality] = quality_counts.get(v.sleep_quality, 0) + 1
+            
+            sleep_stats = {
+                'average_hours': round(avg_sleep, 1),
+                'total_nights': len(sleep_vitals),
+                'quality_distribution': quality_counts
+            }
+        
         report = {
             'success': True,
             'patient': {
@@ -404,7 +562,11 @@ def get_health_summary_report(patient_id):
                 'age': age,
                 'date_of_birth': patient.date_of_birth.isoformat(),
                 'gender': patient.gender,
-                'conditions': patient.conditions
+                'phone': patient.phone,
+                'emergency_contact': patient.emergency_contact,
+                'conditions': conditions,
+                'medications': medications,
+                'allergies': allergies
             },
             'period': {
                 'days': days,
@@ -412,6 +574,7 @@ def get_health_summary_report(patient_id):
                 'end_date': utc_now().isoformat()
             },
             'statistics': stats,
+            'sleep_statistics': sleep_stats,
             'vitals_count': len(vitals),
             'recommendations': recommendations,
             'insights_count': len(insights),
