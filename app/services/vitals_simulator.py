@@ -132,7 +132,8 @@ class VitalsSimulator:
                 'vitals': vitals_data,
                 'timestamp': vitals_data['timestamp'].isoformat()
             }
-            socketio.emit('vitals_update', data, namespace='/realtime')
+            # Emit without namespace for broader compatibility
+            socketio.emit('vitals_update', data, broadcast=True)
             logger.debug(f"Emitted vitals update via WebSocket for patient_id={self.patient_id}")
             
             # Check for alerts
@@ -144,7 +145,7 @@ class VitalsSimulator:
                     'vitals': vitals_data,
                     'timestamp': vitals_data['timestamp'].isoformat()
                 }
-                socketio.emit('critical_alert', alert_data, namespace='/alerts')
+                socketio.emit('critical_alert', alert_data, broadcast=True)
                 logger.warning(f"Critical alert emitted for patient_id={self.patient_id}: {alert_data['message']}")
                 
         except Exception as e:

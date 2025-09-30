@@ -353,7 +353,16 @@ document.querySelectorAll('.chart-toggle').forEach(button => {
 // Real-time updates via WebSocket
 const socket = io();
 
+socket.on('connect', function() {
+    console.log('Connected to real-time updates');
+});
+
+socket.on('disconnect', function() {
+    console.log('Disconnected from real-time updates');
+});
+
 socket.on('vitals_update', function(data) {
+    console.log('Received vitals update:', data);
     if (data.patient_id === {{ patient.id }}) {
         updateVitalsDisplay(data.vitals);
         loadVitalsData(); // Refresh chart
@@ -361,6 +370,7 @@ socket.on('vitals_update', function(data) {
 });
 
 socket.on('critical_alert', function(data) {
+    console.log('Received critical alert:', data);
     if (data.patient_id === {{ patient.id }}) {
         showAlert(data.message);
         showNotification('Health Alert', data.message, 'warning');
