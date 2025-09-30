@@ -106,7 +106,12 @@
                 <i class="fas fa-calendar-day text-2xl text-blue-600 mr-3"></i>
                 <h2 class="text-2xl font-bold text-gray-900">Daily Insights</h2>
             </div>
-            <span class="text-sm text-gray-500">Last 7 days</span>
+            <div class="flex space-x-2">
+                <span class="text-sm text-gray-500">Last 7 days</span>
+                <button onclick="generateReport('daily')" class="ml-4 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm font-medium">
+                    <i class="fas fa-plus mr-2"></i>Generate Daily Report
+                </button>
+            </div>
         </div>
 
         {% if daily_insights %}
@@ -177,7 +182,12 @@
                 <i class="fas fa-calendar-week text-2xl text-purple-600 mr-3"></i>
                 <h2 class="text-2xl font-bold text-gray-900">Weekly Insights</h2>
             </div>
-            <span class="text-sm text-gray-500">Last 4 weeks</span>
+            <div class="flex space-x-2">
+                <span class="text-sm text-gray-500">Last 4 weeks</span>
+                <button onclick="generateReport('weekly')" class="ml-4 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 text-sm font-medium">
+                    <i class="fas fa-plus mr-2"></i>Generate Weekly Report
+                </button>
+            </div>
         </div>
 
         {% if weekly_insights %}
