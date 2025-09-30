@@ -22,6 +22,7 @@ Werkzeug
 # Web Scraping and AI Enhancement
 beautifulsoup4
 lxml
+openai
 
 # Testing
 pytest

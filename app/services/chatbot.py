@@ -22,13 +22,19 @@ class HealthChatbot:
         logger.info(f"OpenAI API available: {self.openai_available}")
         if self.openai_available:
             try:
-                import openai
-                openai.api_key = os.getenv('OPENAI_API_KEY')
-                self.openai = openai
-                logger.info("OpenAI module loaded successfully")
-            except ImportError:
+                from openai import OpenAI
+                self.openai_client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+                logger.info("OpenAI client initialized successfully")
+            except ImportError as e:
                 self.openai_available = False
-                logger.warning("OpenAI module import failed, using fallback responses")
+                self.openai_client = None
+                logger.warning(f"OpenAI module import failed: {e}, using fallback responses")
+            except Exception as e:
+                self.openai_available = False
+                self.openai_client = None
+                logger.warning(f"OpenAI initialization failed: {e}, using fallback responses")
+        else:
+            self.openai_client = None
         
         # Fallback responses for demo
         self.responses = {
@@ -136,6 +142,10 @@ class HealthChatbot:
     def generate_response_with_openai(self, patient_id, message, context):
         """Generate AI response using OpenAI"""
         try:
+            if not self.openai_client:
+                logger.warning("OpenAI client not available")
+                return None
+                
             context_str = f"""
             Patient Information:
             - Name: {context.get('patient_name', 'Patient')}
@@ -155,7 +165,8 @@ class HealthChatbot:
             system_prompt = """You are a helpful AI health coach. Provide practical health advice based on the patient's vitals. 
             Be encouraging and remind patients to consult healthcare providers for medical decisions."""
             
-            response = self.openai.ChatCompletion.create(
+            logger.debug(f"Calling OpenAI API for patient_id={patient_id}")
+            response = self.openai_client.chat.completions.create(
                 model="gpt-3.5-turbo",
                 messages=[
                     {"role": "system", "content": system_prompt},
@@ -166,14 +177,17 @@ class HealthChatbot:
                 temperature=0.7
             )
             
-            return response.choices[0].message.content.strip()
+            ai_response = response.choices[0].message.content.strip()
+            logger.info(f"OpenAI API response received for patient_id={patient_id}, length={len(ai_response)}")
+            return ai_response
             
         except Exception as e:
-            print(f"OpenAI error: {e}")
+            logger.error(f"OpenAI API error for patient_id={patient_id}: {e}", exc_info=True)
             return None
     
     def generate_fallback_response(self, message, context):
         """Generate response using rule-based system with web-scraped knowledge"""
+        logger.info(f"Generating fallback response for message: '{message[:50]}...'")
         message_lower = message.lower()
         
         # Try to get web-scraped knowledge first for better responses
@@ -185,8 +199,10 @@ class HealthChatbot:
         
         for topic in health_topics:
             if topic in message_lower or topic.replace(' ', '') in message_lower:
+                logger.debug(f"Attempting to scrape web knowledge for topic: {topic}")
                 web_knowledge = scraper.scrape_health_topic(topic, max_length=400)
                 if web_knowledge:
+                    logger.info(f"Successfully retrieved web knowledge for topic: {topic}")
                     break
         
         # If we have web-scraped knowledge, use it
@@ -242,6 +258,7 @@ class HealthChatbot:
                 bp_advice=bp_advice,
                 bp_status=bp_status
             )
+            logger.debug(f"Generated blood pressure-specific response")
             return response
             
         elif any(word in message_lower for word in ['diet', 'food', 'eat', 'nutrition']):
@@ -250,15 +267,21 @@ class HealthChatbot:
             responses = self.responses['exercise']
             steps = context.get('daily_averages', {}).get('total_steps', 0)
             response = random.choice(responses).format(steps=steps)
+            logger.debug(f"Generated exercise-specific response")
             return response
         elif any(word in message_lower for word in ['medication', 'medicine', 'pills']):
             responses = self.responses['medication']
+            logger.debug(f"Matched medication category")
         elif any(word in message_lower for word in ['stress', 'anxiety', 'worried']):
             responses = self.responses['stress']
+            logger.debug(f"Matched stress category")
         else:
             responses = self.responses['default']
+            logger.debug(f"Using default response category")
         
-        return random.choice(responses)
+        final_response = random.choice(responses)
+        logger.info(f"Generated fallback response, length={len(final_response)}")
+        return final_response
     
     def generate_response(self, patient_id, message, session_id=None):
         """Generate AI response to patient message"""
