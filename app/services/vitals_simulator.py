@@ -33,19 +33,24 @@ class VitalsSimulator:
         self.running = True
         self.patient_id = patient_id
         
+        # Import here to avoid circular dependency
+        from app import create_app
+        app = create_app()
+        
         def simulate():
             logger.debug(f"Simulation thread started for patient_id={patient_id}")
-            while self.running:
-                try:
-                    vitals = self.generate_realistic_vitals()
-                    self.save_vitals(vitals)
-                    self.emit_realtime_data(vitals)
-                    
-                    # Sleep for 30 seconds (simulate data every 30s)
-                    time.sleep(30)
-                except Exception as e:
-                    logger.error(f"Simulation error for patient_id={patient_id}: {e}", exc_info=True)
-                    time.sleep(5)
+            with app.app_context():
+                while self.running:
+                    try:
+                        vitals = self.generate_realistic_vitals()
+                        self.save_vitals(vitals)
+                        self.emit_realtime_data(vitals)
+                        
+                        # Sleep for 30 seconds (simulate data every 30s)
+                        time.sleep(30)
+                    except Exception as e:
+                        logger.error(f"Simulation error for patient_id={patient_id}: {e}", exc_info=True)
+                        time.sleep(5)
             logger.info(f"Simulation thread stopped for patient_id={patient_id}")
         
         thread = Thread(target=simulate)
