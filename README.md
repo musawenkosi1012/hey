@@ -183,7 +183,22 @@ DATABASE_URL=sqlite:///chronisense.db
 OPENAI_API_KEY=your-openai-api-key
 TWILIO_ACCOUNT_SID=your-twilio-sid
 TWILIO_AUTH_TOKEN=your-twilio-token
+
+# Logging Configuration
+LOG_LEVEL=INFO  # Options: DEBUG, INFO, WARNING, ERROR, CRITICAL
 ```
+
+### Logging System
+
+ChroniSense includes comprehensive logging throughout the application:
+
+- **📋 Detailed Logs**: Track all operations, inputs, outputs, and errors
+- **🔍 Troubleshooting**: Easy identification of issues with stack traces
+- **⚙️ Configurable**: Adjust verbosity via `LOG_LEVEL` environment variable
+- **📁 Log Files**: Rotating log files in `logs/chronisense.log` (max 10MB, keeps 5 files)
+- **🎯 Console Output**: Real-time logging to terminal for development
+
+**See [LOGGING_GUIDE.md](LOGGING_GUIDE.md) for complete logging documentation.**
 
 ### OpenAI API Setup
 

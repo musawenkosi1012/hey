@@ -20,9 +20,9 @@ bp = Blueprint('api', __name__, url_prefix='/api')
 
 @bp.route('/vitals/<int:patient_id>')
 @login_required
-    logger.info(f"get_vitals called for patient_id={patient_id} by user={current_user.username}")
 def get_vitals(patient_id):
     """Get vitals data for a patient"""
+    logger.info(f"get_vitals called for patient_id={patient_id} by user={current_user.username}")
     try:
         # Check authorization
         if current_user.role == 'patient':
