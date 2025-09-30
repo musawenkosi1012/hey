@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+
+{% block title %}Doctor Dashboard - ChroniSense{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Header -->
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900">Doctor Dashboard</h1>
+        <p class="text-gray-600 mt-1">Monitor your patients and recent alerts</p>
+    </div>
+
+    <!-- Stats Overview -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div class="bg-white shadow-lg rounded-lg p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-sm">Total Patients</p>
+                    <p class="text-3xl font-bold text-gray-900">{{ patients|length }}</p>
+                </div>
+                <div class="bg-blue-100 p-4 rounded-full">
+                    <i class="fas fa-users text-blue-600 text-2xl"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white shadow-lg rounded-lg p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-sm">Recent Alerts (24h)</p>
+                    <p class="text-3xl font-bold text-red-600">{{ recent_alerts|length }}</p>
+                </div>
+                <div class="bg-red-100 p-4 rounded-full">
+                    <i class="fas fa-exclamation-triangle text-red-600 text-2xl"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white shadow-lg rounded-lg p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-sm">Pending Insights</p>
+                    <p class="text-3xl font-bold text-yellow-600">{{ pending_insights|length }}</p>
+                </div>
+                <div class="bg-yellow-100 p-4 rounded-full">
+                    <i class="fas fa-lightbulb text-yellow-600 text-2xl"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Alerts -->
+    {% if recent_alerts %}
+    <div class="bg-white shadow-lg rounded-lg overflow-hidden mb-8">
+        <div class="bg-gradient-to-r from-red-600 to-orange-600 px-6 py-4">
+            <h2 class="text-xl font-bold text-white">Recent Alerts (Last 24 Hours)</h2>
+        </div>
+        <div class="p-6">
+            <div class="space-y-4">
+                {% for alert in recent_alerts[:10] %}
+                <div class="bg-red-50 border-l-4 border-red-500 p-4 rounded">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="font-bold text-gray-900">Patient: {{ alert.patient.full_name }}</p>
+                            <p class="text-sm text-gray-600">
+                                BP: {{ alert.systolic_bp }}/{{ alert.diastolic_bp }} | HR: {{ alert.heart_rate }} bpm
+                            </p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-sm text-gray-500">{{ alert.timestamp.strftime('%Y-%m-%d %H:%M') }}</p>
+                            <a href="{{ url_for('doctor.patient_detail', patient_id=alert.patient_id) }}" class="text-blue-600 hover:text-blue-800 text-sm">
+                                View Details →
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Pending Insights -->
+    {% if pending_insights %}
+    <div class="bg-white shadow-lg rounded-lg overflow-hidden mb-8">
+        <div class="bg-gradient-to-r from-yellow-600 to-orange-600 px-6 py-4">
+            <h2 class="text-xl font-bold text-white">Pending Insights (Last 7 Days)</h2>
+        </div>
+        <div class="p-6">
+            <div class="space-y-4">
+                {% for insight in pending_insights[:10] %}
+                <div class="bg-yellow-50 border-l-4 border-yellow-500 p-4 rounded">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="font-bold text-gray-900">{{ insight.title }}</p>
+                            <p class="text-sm text-gray-700 mt-1">{{ insight.content[:100] }}...</p>
+                            <p class="text-xs text-gray-500 mt-2">Patient: {{ insight.patient.full_name }}</p>
+                        </div>
+                        <div class="text-right">
+                            <span class="px-3 py-1 rounded-full text-sm {% if insight.severity == 'critical' %}bg-red-200 text-red-800{% elif insight.severity == 'warning' %}bg-yellow-200 text-yellow-800{% else %}bg-blue-200 text-blue-800{% endif %}">
+                                {{ insight.severity|title }}
+                            </span>
+                            <p class="text-sm text-gray-500 mt-2">{{ insight.created_at.strftime('%Y-%m-%d') }}</p>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- All Patients -->
+    <div class="bg-white shadow-lg rounded-lg overflow-hidden">
+        <div class="bg-gradient-to-r from-blue-600 to-purple-600 px-6 py-4">
+            <h2 class="text-xl font-bold text-white">All Patients</h2>
+        </div>
+        <div class="p-6">
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead>
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Patient ID</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Gender</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Contact</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for patient in patients %}
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">#{{ patient.id }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ patient.full_name }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">{{ patient.gender }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ patient.phone or 'N/A' }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                <a href="{{ url_for('doctor.patient_detail', patient_id=patient.id) }}" class="text-blue-600 hover:text-blue-900">
+                                    View Details
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
