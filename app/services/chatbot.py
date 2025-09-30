@@ -7,6 +7,9 @@ from app.models.patient import Patient
 from app.models.insights import ChatMessage
 from app import db
 from app.services.web_scraper import scraper
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Helper function for naive UTC datetime (for DB compatibility)
 def utc_now():
@@ -14,14 +17,18 @@ def utc_now():
 
 class HealthChatbot:
     def __init__(self):
+        logger.info("Initializing HealthChatbot")
         self.openai_available = bool(os.getenv('OPENAI_API_KEY'))
+        logger.info(f"OpenAI API available: {self.openai_available}")
         if self.openai_available:
             try:
                 import openai
                 openai.api_key = os.getenv('OPENAI_API_KEY')
                 self.openai = openai
+                logger.info("OpenAI module loaded successfully")
             except ImportError:
                 self.openai_available = False
+                logger.warning("OpenAI module import failed, using fallback responses")
         
         # Fallback responses for demo
         self.responses = {
@@ -64,17 +71,23 @@ class HealthChatbot:
         
     def get_patient_context(self, patient_id):
         """Get recent vitals and patient info for context"""
+        logger.info(f"Getting patient context for patient_id={patient_id}")
         try:
             # Get patient info
             patient = Patient.query.get(patient_id)
             if not patient:
+                logger.warning(f"Patient not found: patient_id={patient_id}")
                 return {}
+            
+            logger.debug(f"Found patient: {patient.first_name} {patient.last_name}")
             
             # Get recent vitals (last 24 hours)
             recent_vitals = VitalSigns.query.filter(
                 VitalSigns.patient_id == patient_id,
                 VitalSigns.timestamp >= utc_now() - timedelta(hours=24)
             ).order_by(VitalSigns.timestamp.desc()).limit(20).all()
+            
+            logger.debug(f"Retrieved {len(recent_vitals)} recent vitals records")
             
             # Calculate averages
             if recent_vitals:
@@ -85,9 +98,11 @@ class HealthChatbot:
                 total_steps = sum(v.steps for v in recent_vitals if v.steps)
                 
                 latest_vitals = recent_vitals[0] if recent_vitals else None
+                logger.debug(f"Calculated averages: BP={avg_bp_sys:.0f}/{avg_bp_dia:.0f}, HR={avg_hr:.0f}, SpO2={avg_spo2:.1f}")
             else:
                 avg_bp_sys = avg_bp_dia = avg_hr = avg_spo2 = total_steps = 0
                 latest_vitals = None
+                logger.warning(f"No recent vitals found for patient_id={patient_id}")
             
             context = {
                 'patient_name': patient.first_name,
@@ -111,10 +126,11 @@ class HealthChatbot:
                 }
             }
             
+            logger.info(f"Patient context retrieved successfully for patient_id={patient_id}")
             return context
             
         except Exception as e:
-            print(f"Error getting patient context: {e}")
+            logger.error(f"Error getting patient context for patient_id={patient_id}: {e}", exc_info=True)
             return {}
     
     def generate_response_with_openai(self, patient_id, message, context):
@@ -246,18 +262,24 @@ class HealthChatbot:
     
     def generate_response(self, patient_id, message, session_id=None):
         """Generate AI response to patient message"""
+        logger.info(f"Generating response for patient_id={patient_id}, message='{message[:50]}...'")
         try:
             # Get patient context
             context = self.get_patient_context(patient_id)
+            logger.debug(f"Context retrieved for patient_id={patient_id}")
             
             # Try OpenAI first if available
             ai_response = None
             if self.openai_available:
+                logger.debug("Attempting to use OpenAI for response generation")
                 ai_response = self.generate_response_with_openai(patient_id, message, context)
             
             # Use fallback if OpenAI failed or not available
             if not ai_response:
+                logger.debug("Using fallback response generation")
                 ai_response = self.generate_fallback_response(message, context)
+            
+            logger.info(f"Response generated for patient_id={patient_id}, length={len(ai_response)}")
             
             # Save chat message to database
             chat_message = ChatMessage(
@@ -270,6 +292,7 @@ class HealthChatbot:
             
             db.session.add(chat_message)
             db.session.commit()
+            logger.debug(f"Chat message saved to database: id={chat_message.id}")
             
             return {
                 'success': True,
@@ -278,7 +301,7 @@ class HealthChatbot:
             }
             
         except Exception as e:
-            print(f"Error generating chatbot response: {e}")
+            logger.error(f"Error generating chatbot response for patient_id={patient_id}: {e}", exc_info=True)
             
             # Fallback response
             fallback_response = "I'm sorry, I'm having trouble right now. Please try again in a moment, or contact your healthcare provider if you have urgent concerns."
@@ -291,11 +314,13 @@ class HealthChatbot:
     
     def get_chat_history(self, patient_id, limit=10):
         """Get recent chat history for a patient"""
+        logger.info(f"Retrieving chat history for patient_id={patient_id}, limit={limit}")
         try:
             messages = ChatMessage.query.filter_by(
                 patient_id=patient_id
             ).order_by(ChatMessage.timestamp.desc()).limit(limit).all()
             
+            logger.info(f"Retrieved {len(messages)} chat messages for patient_id={patient_id}")
             return [{
                 'id': msg.id,
                 'message': msg.message,

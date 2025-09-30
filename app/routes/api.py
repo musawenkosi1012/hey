@@ -8,6 +8,9 @@ from app.services.vitals_simulator import simulator
 from app import db
 from datetime import datetime, timedelta, timezone
 import uuid
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Helper function for naive UTC datetime (for DB compatibility)
 def utc_now():
@@ -19,6 +22,7 @@ bp = Blueprint('api', __name__, url_prefix='/api')
 @login_required
 def get_vitals(patient_id):
     """Get vitals data for a patient"""
+    logger.info(f"get_vitals called for patient_id={patient_id} by user={current_user.username}")
     try:
         # Check authorization
         if current_user.role == 'patient':
