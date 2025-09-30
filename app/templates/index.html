@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+
+{% block title %}Welcome to ChroniSense{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<div class="gradient-bg">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <div class="text-center">
+            <h1 class="text-4xl md:text-6xl font-bold text-white mb-6">
+                <i class="fas fa-heartbeat mr-4"></i>
+                ChroniSense
+            </h1>
+            <p class="text-xl md:text-2xl text-white mb-8 max-w-3xl mx-auto">
+                AI-powered health monitoring and coaching for chronic condition patients
+            </p>
+            <div class="space-x-4">
+                {% if not current_user.is_authenticated %}
+                    <a href="{{ url_for('auth.register') }}" class="bg-white text-blue-600 hover:bg-gray-100 px-8 py-3 rounded-lg text-lg font-medium inline-flex items-center">
+                        <i class="fas fa-user-plus mr-2"></i>
+                        Get Started
+                    </a>
+                    <a href="{{ url_for('auth.login') }}" class="border-2 border-white text-white hover:bg-white hover:text-blue-600 px-8 py-3 rounded-lg text-lg font-medium inline-flex items-center">
+                        <i class="fas fa-sign-in-alt mr-2"></i>
+                        Sign In
+                    </a>
+                {% else %}
+                    <a href="{% if current_user.role == 'patient' %}{{ url_for('main.patient_dashboard') }}{% elif current_user.role == 'doctor' %}{{ url_for('doctor.dashboard') }}{% else %}{{ url_for('main.caregiver_dashboard') }}{% endif %}" class="bg-white text-blue-600 hover:bg-gray-100 px-8 py-3 rounded-lg text-lg font-medium inline-flex items-center">
+                        <i class="fas fa-tachometer-alt mr-2"></i>
+                        Go to Dashboard
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Features Section -->
+<div class="py-16 bg-white">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center mb-12">
+            <h2 class="text-3xl font-bold text-gray-900 mb-4">Comprehensive Health Monitoring</h2>
+            <p class="text-xl text-gray-600 max-w-3xl mx-auto">
+                ChroniSense combines real-time vitals monitoring, AI coaching, and personalized insights to help you manage your health effectively.
+            </p>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <!-- Real-time Monitoring -->
+            <div class="text-center p-6 rounded-2xl border-2 border-gray-100 hover:border-blue-300 transition-all">
+                <div class="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-heart-pulse text-blue-600 text-2xl"></i>
+                </div>
+                <h3 class="text-xl font-semibold text-gray-900 mb-2">Real-time Vitals</h3>
+                <p class="text-gray-600">
+                    Continuous monitoring of heart rate, blood pressure, oxygen saturation, and activity levels with instant alerts.
+                </p>
+            </div>
+            
+            <!-- AI Health Coach -->
+            <div class="text-center p-6 rounded-2xl border-2 border-gray-100 hover:border-green-300 transition-all">
+                <div class="bg-green-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-robot text-green-600 text-2xl"></i>
+                </div>
+                <h3 class="text-xl font-semibold text-gray-900 mb-2">AI Health Coach</h3>
+                <p class="text-gray-600">
+                    Chat with your personal AI health coach for diet advice, exercise tips, and lifestyle guidance tailored to your condition.
+                </p>
+            </div>
+            
+            <!-- Personalized Insights -->
+            <div class="text-center p-6 rounded-2xl border-2 border-gray-100 hover:border-purple-300 transition-all">
+                <div class="bg-purple-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-book-open text-purple-600 text-2xl"></i>
+                </div>
+                <h3 class="text-xl font-semibold text-gray-900 mb-2">Electro-book Insights</h3>
+                <p class="text-gray-600">
+                    AI-generated daily and weekly health reports with personalized recommendations and trend analysis.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- How It Works Section -->
+<div class="py-16 bg-gray-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center mb-12">
+            <h2 class="text-3xl font-bold text-gray-900 mb-4">How ChroniSense Works</h2>
+            <p class="text-xl text-gray-600">Simple steps to better health management</p>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+            <div class="text-center">
+                <div class="bg-blue-600 text-white w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 text-xl font-bold">1</div>
+                <h3 class="text-lg font-semibold text-gray-900 mb-2">Connect Devices</h3>
+                <p class="text-gray-600">Link your wearable devices or use our simulation for continuous vitals monitoring.</p>
+            </div>
+            
+            <div class="text-center">
+                <div class="bg-green-600 text-white w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 text-xl font-bold">2</div>
+                <h3 class="text-lg font-semibold text-gray-900 mb-2">Monitor Health</h3>
+                <p class="text-gray-600">Real-time tracking of vital signs with intelligent alerts for concerning changes.</p>
+            </div>
+            
+            <div class="text-center">
+                <div class="bg-purple-600 text-white w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 text-xl font-bold">3</div>
+                <h3 class="text-lg font-semibold text-gray-900 mb-2">Get Insights</h3>
+                <p class="text-gray-600">Receive AI-generated daily reports and personalized health recommendations.</p>
+            </div>
+            
+            <div class="text-center">
+                <div class="bg-red-600 text-white w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 text-xl font-bold">4</div>
+                <h3 class="text-lg font-semibold text-gray-900 mb-2">Chat with AI</h3>
+                <p class="text-gray-600">Ask questions, get advice, and receive support from your AI health coach.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- For Healthcare Providers -->
+<div class="py-16 bg-white">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            <div>
+                <h2 class="text-3xl font-bold text-gray-900 mb-6">For Healthcare Providers</h2>
+                <div class="space-y-4">
+                    <div class="flex items-start">
+                        <div class="bg-blue-100 p-2 rounded-lg mr-4">
+                            <i class="fas fa-chart-line text-blue-600"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-900">Patient Overview Dashboard</h3>
+                            <p class="text-gray-600">Monitor multiple patients with real-time health status and risk assessments.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-start">
+                        <div class="bg-green-100 p-2 rounded-lg mr-4">
+                            <i class="fas fa-exclamation-triangle text-green-600"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-900">Intelligent Alerts</h3>
+                            <p class="text-gray-600">Receive notifications for patients with concerning vital changes or high-risk predictions.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-start">
+                        <div class="bg-purple-100 p-2 rounded-lg mr-4">
+                            <i class="fas fa-file-medical text-purple-600"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-900">Comprehensive Reports</h3>
+                            <p class="text-gray-600">Access detailed AI-generated reports with trends, insights, and recommendations.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="text-center">
+                <i class="fas fa-user-md text-6xl text-gray-300 mb-6"></i>
+                <h3 class="text-xl font-semibold text-gray-900 mb-4">Doctor Portal</h3>
+                <p class="text-gray-600 mb-6">Manage your patients more effectively with AI-powered insights and real-time monitoring.</p>
+                {% if not current_user.is_authenticated %}
+                    <a href="{{ url_for('auth.register') }}" class="bg-blue-600 text-white hover:bg-blue-700 px-6 py-3 rounded-lg text-lg font-medium inline-flex items-center">
+                        <i class="fas fa-user-md mr-2"></i>
+                        Join as Doctor
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Call to Action -->
+<div class="gradient-bg py-16">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        <h2 class="text-3xl font-bold text-white mb-4">Ready to Take Control of Your Health?</h2>
+        <p class="text-xl text-white mb-8 max-w-2xl mx-auto">
+            Join thousands of patients and healthcare providers using ChroniSense for better chronic condition management.
+        </p>
+        {% if not current_user.is_authenticated %}
+            <a href="{{ url_for('auth.register') }}" class="bg-white text-blue-600 hover:bg-gray-100 px-8 py-3 rounded-lg text-lg font-medium inline-flex items-center">
+                <i class="fas fa-rocket mr-2"></i>
+                Start Your Journey
+            </a>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

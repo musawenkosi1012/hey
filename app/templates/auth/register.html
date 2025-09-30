@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+
+{% block title %}Register - ChroniSense{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-md w-full space-y-8">
+        <div>
+            <div class="text-center">
+                <i class="fas fa-user-plus text-blue-600 text-4xl mb-4"></i>
+                <h2 class="text-3xl font-bold text-gray-900">Create your account</h2>
+                <p class="mt-2 text-sm text-gray-600">
+                    Already have an account? 
+                    <a href="{{ url_for('auth.login') }}" class="font-medium text-blue-600 hover:text-blue-500">
+                        Sign in here
+                    </a>
+                </p>
+            </div>
+        </div>
+        
+        <form class="mt-8 space-y-6" method="POST">
+            <!-- Role Selection -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Account Type</label>
+                <div class="grid grid-cols-3 gap-2">
+                    <label class="relative">
+                        <input type="radio" name="role" value="patient" checked class="sr-only">
+                        <div class="role-option border-2 border-gray-300 rounded-lg p-3 text-center cursor-pointer hover:border-blue-500 selected">
+                            <i class="fas fa-user text-blue-600 text-xl mb-1"></i>
+                            <div class="text-sm font-medium">Patient</div>
+                        </div>
+                    </label>
+                    <label class="relative">
+                        <input type="radio" name="role" value="doctor" class="sr-only">
+                        <div class="role-option border-2 border-gray-300 rounded-lg p-3 text-center cursor-pointer hover:border-blue-500">
+                            <i class="fas fa-user-md text-green-600 text-xl mb-1"></i>
+                            <div class="text-sm font-medium">Doctor</div>
+                        </div>
+                    </label>
+                    <label class="relative">
+                        <input type="radio" name="role" value="caregiver" class="sr-only">
+                        <div class="role-option border-2 border-gray-300 rounded-lg p-3 text-center cursor-pointer hover:border-blue-500">
+                            <i class="fas fa-hands-helping text-purple-600 text-xl mb-1"></i>
+                            <div class="text-sm font-medium">Caregiver</div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+            
+            <!-- Basic Information -->
+            <div class="space-y-4">
+                <div>
+                    <label for="username" class="block text-sm font-medium text-gray-700">Username</label>
+                    <input id="username" name="username" type="text" required 
+                           class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" 
+                           placeholder="Enter username">
+                </div>
+                
+                <div>
+                    <label for="email" class="block text-sm font-medium text-gray-700">Email</label>
+                    <input id="email" name="email" type="email" required 
+                           class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" 
+                           placeholder="Enter email address">
+                </div>
+                
+                <div>
+                    <label for="password" class="block text-sm font-medium text-gray-700">Password</label>
+                    <input id="password" name="password" type="password" required 
+                           class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" 
+                           placeholder="Enter password">
+                </div>
+                
+                <div>
+                    <label for="confirm_password" class="block text-sm font-medium text-gray-700">Confirm Password</label>
+                    <input id="confirm_password" name="confirm_password" type="password" required 
+                           class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" 
+                           placeholder="Confirm password">
+                </div>
+            </div>
+            
+            <!-- Patient-specific fields -->
+            <div id="patient-fields" class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label for="first_name" class="block text-sm font-medium text-gray-700">First Name</label>
+                        <input id="first_name" name="first_name" type="text" 
+                               class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" 
+                               placeholder="First name">
+                    </div>
+                    
+                    <div>
+                        <label for="last_name" class="block text-sm font-medium text-gray-700">Last Name</label>
+                        <input id="last_name" name="last_name" type="text" 
+                               class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" 
+                               placeholder="Last name">
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label for="date_of_birth" class="block text-sm font-medium text-gray-700">Date of Birth</label>
+                        <input id="date_of_birth" name="date_of_birth" type="date" 
+                               class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                    </div>
+                    
+                    <div>
+                        <label for="gender" class="block text-sm font-medium text-gray-700">Gender</label>
+                        <select id="gender" name="gender" 
+                                class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                            <option value="male">Male</option>
+                            <option value="female">Female</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <button type="submit" 
+                        class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    <span class="absolute left-0 inset-y-0 flex items-center pl-3">
+                        <i class="fas fa-user-plus text-blue-500 group-hover:text-blue-400"></i>
+                    </span>
+                    Create Account
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const roleInputs = document.querySelectorAll('input[name="role"]');
+    const roleOptions = document.querySelectorAll('.role-option');
+    const patientFields = document.getElementById('patient-fields');
+    
+    roleInputs.forEach((input, index) => {
+        input.addEventListener('change', function() {
+            // Update visual selection
+            roleOptions.forEach(option => option.classList.remove('selected'));
+            roleOptions[index].classList.add('selected');
+            
+            // Show/hide patient fields
+            if (input.value === 'patient') {
+                patientFields.style.display = 'block';
+            } else {
+                patientFields.style.display = 'none';
+            }
+        });
+    });
+    
+    // Style selected role option
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.role-option')) {
+            const option = e.target.closest('.role-option');
+            const input = option.parentElement.querySelector('input[type="radio"]');
+            input.checked = true;
+            input.dispatchEvent(new Event('change'));
+        }
+    });
+});
+</script>
+
+<style>
+.role-option.selected {
+    border-color: #3B82F6;
+    background-color: #EFF6FF;
+}
+</style>
+{% endblock %}

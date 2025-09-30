@@ -1,0 +1,15 @@
+# Core Flask and Web Framework
+Flask==2.3.3
+Flask-SocketIO==5.3.6
+Flask-Login==0.6.3
+Flask-CORS==4.0.0
+
+# Database and ORM
+Flask-SQLAlchemy==3.0.5
+
+# Data Validation and Utilities
+python-dotenv==1.0.0
+requests==2.31.0
+
+# Authentication
+Werkzeug==2.3.7
