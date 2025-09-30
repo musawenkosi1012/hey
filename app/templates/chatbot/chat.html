@@ -448,14 +448,18 @@ document.getElementById('clearHistory').addEventListener('click', function() {
 });
 
 // Real-time vitals updates (using global socket from base.html)
-socket.on('vitals_update', function(data) {
-    if (data.patient_id === {{ patient.id }}) {
-        const vitals = data.vitals;
-        document.getElementById('current-bp').textContent = `${vitals.systolic_bp}/${vitals.diastolic_bp}`;
-        document.getElementById('current-hr').textContent = `${vitals.heart_rate} bpm`;
-        document.getElementById('current-spo2').textContent = `${vitals.spo2}%`;
-        document.getElementById('current-steps').textContent = vitals.steps || 0;
-    }
-});
+if (socket) {
+    socket.on('vitals_update', function(data) {
+        if (data.patient_id === {{ patient.id }}) {
+            const vitals = data.vitals;
+            document.getElementById('current-bp').textContent = `${vitals.systolic_bp}/${vitals.diastolic_bp}`;
+            document.getElementById('current-hr').textContent = `${vitals.heart_rate} bpm`;
+            document.getElementById('current-spo2').textContent = `${vitals.spo2}%`;
+            document.getElementById('current-steps').textContent = vitals.steps || 0;
+        }
+    });
+} else {
+    console.log('Real-time vitals updates disabled - Socket.IO not available');
+}
 </script>
 {% endblock %}

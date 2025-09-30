@@ -362,19 +362,23 @@ document.querySelectorAll('.chart-toggle').forEach(button => {
 });
 
 // Real-time updates via WebSocket (using global socket from base.html)
-socket.on('vitals_update', function(data) {
-    if (data.patient_id === {{ patient.id }}) {
-        updateVitalsDisplay(data.vitals);
-        loadVitalsData(); // Refresh chart
-    }
-});
+if (socket) {
+    socket.on('vitals_update', function(data) {
+        if (data.patient_id === {{ patient.id }}) {
+            updateVitalsDisplay(data.vitals);
+            loadVitalsData(); // Refresh chart
+        }
+    });
 
-socket.on('critical_alert', function(data) {
-    if (data.patient_id === {{ patient.id }}) {
-        showAlert(data.message);
-        showNotification('Health Alert', data.message, 'warning');
-    }
-});
+    socket.on('critical_alert', function(data) {
+        if (data.patient_id === {{ patient.id }}) {
+            showAlert(data.message);
+            showNotification('Health Alert', data.message, 'warning');
+        }
+    });
+} else {
+    console.log('Real-time updates disabled - Socket.IO not available');
+}
 
 // Update vitals display
 function updateVitalsDisplay(vitals) {
