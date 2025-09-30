@@ -3,8 +3,12 @@ from flask_login import login_required, current_user
 from app.models.patient import Patient
 from app.models.vitals import VitalSigns
 from app.models.insights import PatientInsight
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from sqlalchemy import func
+
+# Helper function for timezone-aware datetime (but return naive for DB compatibility)
+def utc_now():
+    return datetime.utcnow()
 
 bp = Blueprint('main', __name__)
 
@@ -36,7 +40,7 @@ def patient_dashboard():
     # Get recent vitals (last 24 hours)
     recent_vitals = VitalSigns.query.filter(
         VitalSigns.patient_id == patient.id,
-        VitalSigns.timestamp >= datetime.utcnow() - timedelta(hours=24)
+        VitalSigns.timestamp >= utc_now() - timedelta(hours=24)
     ).order_by(VitalSigns.timestamp.desc()).limit(50).all()
     
     # Get latest vital signs
@@ -48,7 +52,7 @@ def patient_dashboard():
     ).order_by(PatientInsight.created_at.desc()).limit(5).all()
     
     # Calculate daily stats
-    today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    today_start = utc_now().replace(hour=0, minute=0, second=0, microsecond=0)
     today_vitals = [v for v in recent_vitals if v.timestamp >= today_start]
     
     daily_stats = {}
@@ -124,7 +128,7 @@ def vitals_history():
     
     # Get date range from query params
     days = request.args.get('days', 7, type=int)
-    start_date = datetime.utcnow() - timedelta(days=days)
+    start_date = utc_now() - timedelta(days=days)
     
     vitals = VitalSigns.query.filter(
         VitalSigns.patient_id == patient.id,
