@@ -115,3 +115,86 @@ def patients_list():
     
     return render_template('doctor/patients_list.html',
                          patients_with_vitals=patients_with_vitals)
+
+@bp.route('/patient/<int:patient_id>/electrobook')
+@login_required
+def patient_electrobook(patient_id):
+    """View patient's electrobook insights (doctor view)"""
+    if current_user.role != 'doctor':
+        return redirect(url_for('main.index'))
+    
+    patient = Patient.query.get_or_404(patient_id)
+    
+    # Get insights by type
+    daily_insights = PatientInsight.query.filter_by(
+        patient_id=patient.id,
+        insight_type='daily'
+    ).order_by(PatientInsight.created_at.desc()).limit(7).all()
+    
+    weekly_insights = PatientInsight.query.filter_by(
+        patient_id=patient.id,
+        insight_type='weekly'
+    ).order_by(PatientInsight.created_at.desc()).limit(4).all()
+    
+    monthly_insights = PatientInsight.query.filter_by(
+        patient_id=patient.id,
+        insight_type='monthly'
+    ).order_by(PatientInsight.created_at.desc()).limit(3).all()
+    
+    return render_template('doctor/patient_electrobook.html',
+                         patient=patient,
+                         daily_insights=daily_insights,
+                         weekly_insights=weekly_insights,
+                         monthly_insights=monthly_insights)
+
+@bp.route('/patient/<int:patient_id>/vitals-history')
+@login_required
+def patient_vitals_history(patient_id):
+    """View patient's complete vitals history (doctor view)"""
+    if current_user.role != 'doctor':
+        return redirect(url_for('main.index'))
+    
+    patient = Patient.query.get_or_404(patient_id)
+    
+    # Get date range from query params
+    days = request.args.get('days', 30, type=int)
+    start_date = utc_now() - timedelta(days=days)
+    
+    vitals = VitalSigns.query.filter(
+        VitalSigns.patient_id == patient.id,
+        VitalSigns.timestamp >= start_date
+    ).order_by(VitalSigns.timestamp.desc()).all()
+    
+    # Calculate statistics
+    if vitals:
+        bp_readings = [v for v in vitals if v.systolic_bp and v.diastolic_bp]
+        hr_readings = [v for v in vitals if v.heart_rate]
+        spo2_readings = [v for v in vitals if v.spo2]
+        
+        stats = {
+            'total_readings': len(vitals),
+            'anomaly_count': len([v for v in vitals if v.is_anomaly]),
+            'blood_pressure': {
+                'avg_systolic': sum(v.systolic_bp for v in bp_readings) / len(bp_readings) if bp_readings else 0,
+                'avg_diastolic': sum(v.diastolic_bp for v in bp_readings) / len(bp_readings) if bp_readings else 0,
+                'max_systolic': max(v.systolic_bp for v in bp_readings) if bp_readings else 0,
+                'min_systolic': min(v.systolic_bp for v in bp_readings) if bp_readings else 0
+            },
+            'heart_rate': {
+                'avg': sum(v.heart_rate for v in hr_readings) / len(hr_readings) if hr_readings else 0,
+                'max': max(v.heart_rate for v in hr_readings) if hr_readings else 0,
+                'min': min(v.heart_rate for v in hr_readings) if hr_readings else 0
+            },
+            'spo2': {
+                'avg': sum(v.spo2 for v in spo2_readings) / len(spo2_readings) if spo2_readings else 0,
+                'min': min(v.spo2 for v in spo2_readings) if spo2_readings else 0
+            }
+        }
+    else:
+        stats = None
+    
+    return render_template('doctor/patient_vitals_history.html',
+                         patient=patient,
+                         vitals=vitals,
+                         stats=stats,
+                         days=days)

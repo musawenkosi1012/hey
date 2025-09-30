@@ -736,3 +736,303 @@ def get_scheduled_reports(patient_id):
         import traceback
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
+
+@bp.route('/doctor/patient/<int:patient_id>/electrobook')
+@login_required
+def get_patient_electrobook(patient_id):
+    """Get electrobook insights for a patient (doctor only)"""
+    try:
+        if current_user.role != 'doctor':
+            return jsonify({'error': 'Unauthorized - doctors only'}), 403
+        
+        patient = Patient.query.get(patient_id)
+        if not patient:
+            return jsonify({'error': 'Patient not found'}), 404
+        
+        # Get all insights for this patient
+        from app.models.insights import PatientInsight
+        insights = PatientInsight.query.filter_by(
+            patient_id=patient_id
+        ).order_by(PatientInsight.created_at.desc()).all()
+        
+        # Categorize insights
+        daily_insights = [i for i in insights if i.insight_type == 'daily']
+        weekly_insights = [i for i in insights if i.insight_type == 'weekly']
+        monthly_insights = [i for i in insights if i.insight_type == 'monthly']
+        
+        return jsonify({
+            'success': True,
+            'patient': {
+                'id': patient.id,
+                'name': f"{patient.first_name} {patient.last_name}",
+                'gender': patient.gender,
+                'date_of_birth': patient.date_of_birth.isoformat()
+            },
+            'insights': {
+                'daily': [{
+                    'id': i.id,
+                    'title': i.title,
+                    'content': i.content,
+                    'severity': i.severity,
+                    'created_at': i.created_at.isoformat(),
+                    'generated_by_ai': i.generated_by_ai
+                } for i in daily_insights[:7]],
+                'weekly': [{
+                    'id': i.id,
+                    'title': i.title,
+                    'content': i.content,
+                    'severity': i.severity,
+                    'created_at': i.created_at.isoformat(),
+                    'generated_by_ai': i.generated_by_ai
+                } for i in weekly_insights[:4]],
+                'monthly': [{
+                    'id': i.id,
+                    'title': i.title,
+                    'content': i.content,
+                    'severity': i.severity,
+                    'created_at': i.created_at.isoformat(),
+                    'generated_by_ai': i.generated_by_ai
+                } for i in monthly_insights[:3]]
+            },
+            'total_insights': len(insights)
+        })
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+@bp.route('/doctor/patient/<int:patient_id>/vitals/history')
+@login_required
+def get_patient_vitals_history(patient_id):
+    """Get complete vitals history for a patient (doctor only)"""
+    try:
+        if current_user.role != 'doctor':
+            return jsonify({'error': 'Unauthorized - doctors only'}), 403
+        
+        patient = Patient.query.get(patient_id)
+        if not patient:
+            return jsonify({'error': 'Patient not found'}), 404
+        
+        # Get query parameters
+        days = request.args.get('days', type=int)
+        limit = request.args.get('limit', 1000, type=int)
+        page = request.args.get('page', 1, type=int)
+        
+        # Build query
+        query = VitalSigns.query.filter_by(patient_id=patient_id)
+        
+        if days:
+            start_date = utc_now() - timedelta(days=days)
+            query = query.filter(VitalSigns.timestamp >= start_date)
+        
+        # Get total count
+        total_count = query.count()
+        
+        # Apply pagination
+        offset = (page - 1) * limit
+        vitals = query.order_by(VitalSigns.timestamp.desc()).limit(limit).offset(offset).all()
+        
+        # Calculate statistics
+        if vitals:
+            bp_readings = [v for v in vitals if v.systolic_bp and v.diastolic_bp]
+            hr_readings = [v for v in vitals if v.heart_rate]
+            spo2_readings = [v for v in vitals if v.spo2]
+            
+            stats = {
+                'total_readings': len(vitals),
+                'anomaly_count': len([v for v in vitals if v.is_anomaly]),
+                'blood_pressure': {
+                    'avg_systolic': sum(v.systolic_bp for v in bp_readings) / len(bp_readings) if bp_readings else 0,
+                    'avg_diastolic': sum(v.diastolic_bp for v in bp_readings) / len(bp_readings) if bp_readings else 0,
+                    'max_systolic': max(v.systolic_bp for v in bp_readings) if bp_readings else 0,
+                    'min_systolic': min(v.systolic_bp for v in bp_readings) if bp_readings else 0
+                },
+                'heart_rate': {
+                    'avg': sum(v.heart_rate for v in hr_readings) / len(hr_readings) if hr_readings else 0,
+                    'max': max(v.heart_rate for v in hr_readings) if hr_readings else 0,
+                    'min': min(v.heart_rate for v in hr_readings) if hr_readings else 0
+                },
+                'spo2': {
+                    'avg': sum(v.spo2 for v in spo2_readings) / len(spo2_readings) if spo2_readings else 0,
+                    'min': min(v.spo2 for v in spo2_readings) if spo2_readings else 0
+                }
+            }
+        else:
+            stats = None
+        
+        return jsonify({
+            'success': True,
+            'patient': {
+                'id': patient.id,
+                'name': f"{patient.first_name} {patient.last_name}"
+            },
+            'vitals': [v.to_dict() for v in vitals],
+            'statistics': stats,
+            'pagination': {
+                'page': page,
+                'limit': limit,
+                'total_count': total_count,
+                'total_pages': (total_count + limit - 1) // limit
+            },
+            'period_days': days
+        })
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+@bp.route('/doctor/patient/<int:patient_id>/full-details')
+@login_required
+def get_patient_full_details(patient_id):
+    """Get comprehensive patient details including profile, vitals, insights, and chat history (doctor only)"""
+    try:
+        if current_user.role != 'doctor':
+            return jsonify({'error': 'Unauthorized - doctors only'}), 403
+        
+        patient = Patient.query.get(patient_id)
+        if not patient:
+            return jsonify({'error': 'Patient not found'}), 404
+        
+        # Get patient profile
+        from datetime import date
+        import json
+        
+        today = date.today()
+        age = today.year - patient.date_of_birth.year - ((today.month, today.day) < (patient.date_of_birth.month, patient.date_of_birth.day))
+        
+        # Parse medical information
+        conditions = None
+        medications = None
+        allergies = None
+        
+        try:
+            if patient.conditions:
+                conditions = json.loads(patient.conditions)
+        except:
+            conditions = patient.conditions
+        
+        try:
+            if patient.medications:
+                medications = json.loads(patient.medications)
+        except:
+            medications = patient.medications
+        
+        try:
+            if patient.allergies:
+                allergies = json.loads(patient.allergies)
+        except:
+            allergies = patient.allergies
+        
+        # Get recent vitals (last 30 days)
+        thirty_days_ago = utc_now() - timedelta(days=30)
+        recent_vitals = VitalSigns.query.filter(
+            VitalSigns.patient_id == patient_id,
+            VitalSigns.timestamp >= thirty_days_ago
+        ).order_by(VitalSigns.timestamp.desc()).limit(100).all()
+        
+        # Get latest risk prediction
+        from app.models.vitals import RiskPrediction
+        latest_risk = RiskPrediction.query.filter_by(
+            patient_id=patient_id
+        ).order_by(RiskPrediction.created_at.desc()).first()
+        
+        # Get recent insights
+        from app.models.insights import PatientInsight
+        insights = PatientInsight.query.filter_by(
+            patient_id=patient_id
+        ).order_by(PatientInsight.created_at.desc()).limit(20).all()
+        
+        # Get chat history
+        chat_history = ChatMessage.query.filter_by(
+            patient_id=patient_id
+        ).order_by(ChatMessage.timestamp.desc()).limit(10).all()
+        
+        # Calculate vitals statistics
+        if recent_vitals:
+            bp_readings = [v for v in recent_vitals if v.systolic_bp and v.diastolic_bp]
+            hr_readings = [v for v in recent_vitals if v.heart_rate]
+            spo2_readings = [v for v in recent_vitals if v.spo2]
+            
+            vitals_stats = {
+                'blood_pressure': {
+                    'avg_systolic': sum(v.systolic_bp for v in bp_readings) / len(bp_readings) if bp_readings else 0,
+                    'avg_diastolic': sum(v.diastolic_bp for v in bp_readings) / len(bp_readings) if bp_readings else 0,
+                    'max_systolic': max(v.systolic_bp for v in bp_readings) if bp_readings else 0,
+                    'min_systolic': min(v.systolic_bp for v in bp_readings) if bp_readings else 0
+                },
+                'heart_rate': {
+                    'avg': sum(v.heart_rate for v in hr_readings) / len(hr_readings) if hr_readings else 0,
+                    'max': max(v.heart_rate for v in hr_readings) if hr_readings else 0,
+                    'min': min(v.heart_rate for v in hr_readings) if hr_readings else 0
+                },
+                'spo2': {
+                    'avg': sum(v.spo2 for v in spo2_readings) / len(spo2_readings) if spo2_readings else 0,
+                    'min': min(v.spo2 for v in spo2_readings) if spo2_readings else 0
+                },
+                'anomaly_count': len([v for v in recent_vitals if v.is_anomaly])
+            }
+        else:
+            vitals_stats = None
+        
+        # Build comprehensive response
+        response = {
+            'success': True,
+            'patient': {
+                'id': patient.id,
+                'first_name': patient.first_name,
+                'last_name': patient.last_name,
+                'full_name': patient.full_name,
+                'age': age,
+                'date_of_birth': patient.date_of_birth.isoformat(),
+                'gender': patient.gender,
+                'phone': patient.phone,
+                'emergency_contact': patient.emergency_contact,
+                'medical_info': {
+                    'conditions': conditions,
+                    'medications': medications,
+                    'allergies': allergies
+                },
+                'thresholds': {
+                    'bp_systolic_max': patient.bp_systolic_max,
+                    'bp_diastolic_max': patient.bp_diastolic_max,
+                    'heart_rate_min': patient.heart_rate_min,
+                    'heart_rate_max': patient.heart_rate_max,
+                    'spo2_min': patient.spo2_min
+                }
+            },
+            'vitals': {
+                'recent': [v.to_dict() for v in recent_vitals[:20]],
+                'statistics': vitals_stats,
+                'total_count': len(recent_vitals)
+            },
+            'risk_assessment': {
+                'risk_6h': latest_risk.risk_6h if latest_risk else 0,
+                'risk_24h': latest_risk.risk_24h if latest_risk else 0,
+                'risk_72h': latest_risk.risk_72h if latest_risk else 0,
+                'updated_at': latest_risk.created_at.isoformat() if latest_risk else None
+            } if latest_risk else None,
+            'insights': [{
+                'id': i.id,
+                'title': i.title,
+                'content': i.content,
+                'type': i.insight_type,
+                'severity': i.severity,
+                'created_at': i.created_at.isoformat(),
+                'generated_by_ai': i.generated_by_ai
+            } for i in insights],
+            'chat_history': [{
+                'message': c.message,
+                'response': c.response,
+                'timestamp': c.timestamp.isoformat()
+            } for c in chat_history],
+            'generated_at': utc_now().isoformat()
+        }
+        
+        return jsonify(response)
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500

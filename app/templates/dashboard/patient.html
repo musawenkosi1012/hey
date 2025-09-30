@@ -430,20 +430,35 @@ document.getElementById('startSimulation').addEventListener('click', function() 
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showNotification('Simulation Started', 'Vitals simulation is now running');
+            showNotification('Simulation Started', 'Vitals simulation is now running', 'success');
+        } else {
+            showNotification('Error', data.error || 'Failed to start simulation', 'error');
         }
+    })
+    .catch(error => {
+        console.error('Start simulation error:', error);
+        showNotification('Error', 'Failed to start simulation', 'error');
     });
 });
 
 document.getElementById('stopSimulation').addEventListener('click', function() {
     fetch('/api/simulator/stop', {
-        method: 'POST'
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showNotification('Simulation Stopped', 'Vitals simulation has been stopped');
+            showNotification('Simulation Stopped', 'Vitals simulation has been stopped', 'success');
+        } else {
+            showNotification('Error', data.error || 'Failed to stop simulation', 'error');
         }
+    })
+    .catch(error => {
+        console.error('Stop simulation error:', error);
+        showNotification('Error', 'Failed to stop simulation', 'error');
     });
 });
 

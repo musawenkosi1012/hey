@@ -10,9 +10,20 @@
             <h1 class="text-3xl font-bold text-gray-900">Patient: {{ patient.full_name }}</h1>
             <p class="text-gray-600 mt-1">Patient ID: #{{ patient.id }}</p>
         </div>
-        <a href="{{ url_for('doctor.patients_list') }}" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
-            <i class="fas fa-arrow-left mr-2"></i>Back to Patients
-        </a>
+        <div class="flex space-x-3">
+            <a href="{{ url_for('doctor.patient_electrobook', patient_id=patient.id) }}" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors">
+                <i class="fas fa-book-medical mr-2"></i>Electrobook
+            </a>
+            <a href="{{ url_for('doctor.patient_vitals_history', patient_id=patient.id) }}" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors">
+                <i class="fas fa-heartbeat mr-2"></i>Vitals History
+            </a>
+            <button id="viewFullDetails" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                <i class="fas fa-info-circle mr-2"></i>View Full Details
+            </button>
+            <a href="{{ url_for('doctor.patients_list') }}" class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors">
+                <i class="fas fa-arrow-left mr-2"></i>Back to Patients
+            </a>
+        </div>
     </div>
 
     <!-- Patient Info Card -->
@@ -198,6 +209,172 @@ new Chart(ctx, {
             }
         }
     }
+});
+
+// View Full Details button
+document.getElementById('viewFullDetails').addEventListener('click', function() {
+    fetch('/api/doctor/patient/{{ patient.id }}/full-details')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Create a modal to display full details
+                const modal = document.createElement('div');
+                modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
+                modal.innerHTML = `
+                    <div class="bg-white rounded-2xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-y-auto">
+                        <div class="bg-gradient-to-r from-blue-600 to-purple-600 px-6 py-4 sticky top-0">
+                            <div class="flex items-center justify-between">
+                                <h2 class="text-2xl font-bold text-white">Full Patient Details</h2>
+                                <button onclick="this.closest('.fixed').remove()" class="text-white hover:text-gray-200">
+                                    <i class="fas fa-times text-2xl"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="p-6">
+                            <!-- Patient Info -->
+                            <div class="mb-6">
+                                <h3 class="text-xl font-bold text-gray-900 mb-4">Patient Information</h3>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="text-sm text-gray-500">Full Name</label>
+                                        <p class="text-gray-900 font-medium">${data.patient.full_name}</p>
+                                    </div>
+                                    <div>
+                                        <label class="text-sm text-gray-500">Age</label>
+                                        <p class="text-gray-900 font-medium">${data.patient.age} years</p>
+                                    </div>
+                                    <div>
+                                        <label class="text-sm text-gray-500">Gender</label>
+                                        <p class="text-gray-900 font-medium capitalize">${data.patient.gender}</p>
+                                    </div>
+                                    <div>
+                                        <label class="text-sm text-gray-500">Phone</label>
+                                        <p class="text-gray-900 font-medium">${data.patient.phone || 'Not provided'}</p>
+                                    </div>
+                                    <div>
+                                        <label class="text-sm text-gray-500">Emergency Contact</label>
+                                        <p class="text-gray-900 font-medium">${data.patient.emergency_contact || 'Not provided'}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Medical Info -->
+                            <div class="mb-6">
+                                <h3 class="text-xl font-bold text-gray-900 mb-4">Medical Information</h3>
+                                <div class="grid grid-cols-1 gap-4">
+                                    <div>
+                                        <label class="text-sm text-gray-500">Conditions</label>
+                                        <p class="text-gray-900">${data.patient.medical_info.conditions ? JSON.stringify(data.patient.medical_info.conditions) : 'None reported'}</p>
+                                    </div>
+                                    <div>
+                                        <label class="text-sm text-gray-500">Medications</label>
+                                        <p class="text-gray-900">${data.patient.medical_info.medications ? JSON.stringify(data.patient.medical_info.medications) : 'None reported'}</p>
+                                    </div>
+                                    <div>
+                                        <label class="text-sm text-gray-500">Allergies</label>
+                                        <p class="text-gray-900">${data.patient.medical_info.allergies ? JSON.stringify(data.patient.medical_info.allergies) : 'None reported'}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Vitals Statistics -->
+                            ${data.vitals.statistics ? `
+                            <div class="mb-6">
+                                <h3 class="text-xl font-bold text-gray-900 mb-4">Vitals Statistics (Last 30 Days)</h3>
+                                <div class="grid grid-cols-3 gap-4">
+                                    <div class="bg-gray-50 p-4 rounded-lg">
+                                        <label class="text-sm text-gray-500">Blood Pressure (Avg)</label>
+                                        <p class="text-2xl font-bold text-gray-900">${Math.round(data.vitals.statistics.blood_pressure.avg_systolic)}/${Math.round(data.vitals.statistics.blood_pressure.avg_diastolic)}</p>
+                                    </div>
+                                    <div class="bg-gray-50 p-4 rounded-lg">
+                                        <label class="text-sm text-gray-500">Heart Rate (Avg)</label>
+                                        <p class="text-2xl font-bold text-gray-900">${Math.round(data.vitals.statistics.heart_rate.avg)} bpm</p>
+                                    </div>
+                                    <div class="bg-gray-50 p-4 rounded-lg">
+                                        <label class="text-sm text-gray-500">SpO2 (Avg)</label>
+                                        <p class="text-2xl font-bold text-gray-900">${data.vitals.statistics.spo2.avg.toFixed(1)}%</p>
+                                    </div>
+                                </div>
+                            </div>
+                            ` : ''}
+
+                            <!-- Risk Assessment -->
+                            ${data.risk_assessment ? `
+                            <div class="mb-6">
+                                <h3 class="text-xl font-bold text-gray-900 mb-4">Risk Assessment</h3>
+                                <div class="grid grid-cols-3 gap-4">
+                                    <div>
+                                        <label class="text-sm text-gray-500">6-Hour Risk</label>
+                                        <div class="flex items-center">
+                                            <div class="flex-1 bg-gray-200 rounded-full h-2 mr-3">
+                                                <div class="bg-${data.risk_assessment.risk_6h < 30 ? 'green' : data.risk_assessment.risk_6h < 70 ? 'yellow' : 'red'}-600 h-2 rounded-full" style="width: ${data.risk_assessment.risk_6h}%"></div>
+                                            </div>
+                                            <span class="text-lg font-bold">${data.risk_assessment.risk_6h.toFixed(1)}%</span>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="text-sm text-gray-500">24-Hour Risk</label>
+                                        <div class="flex items-center">
+                                            <div class="flex-1 bg-gray-200 rounded-full h-2 mr-3">
+                                                <div class="bg-${data.risk_assessment.risk_24h < 30 ? 'green' : data.risk_assessment.risk_24h < 70 ? 'yellow' : 'red'}-600 h-2 rounded-full" style="width: ${data.risk_assessment.risk_24h}%"></div>
+                                            </div>
+                                            <span class="text-lg font-bold">${data.risk_assessment.risk_24h.toFixed(1)}%</span>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="text-sm text-gray-500">72-Hour Risk</label>
+                                        <div class="flex items-center">
+                                            <div class="flex-1 bg-gray-200 rounded-full h-2 mr-3">
+                                                <div class="bg-${data.risk_assessment.risk_72h < 30 ? 'green' : data.risk_assessment.risk_72h < 70 ? 'yellow' : 'red'}-600 h-2 rounded-full" style="width: ${data.risk_assessment.risk_72h}%"></div>
+                                            </div>
+                                            <span class="text-lg font-bold">${data.risk_assessment.risk_72h.toFixed(1)}%</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            ` : ''}
+
+                            <!-- Recent Insights -->
+                            ${data.insights && data.insights.length > 0 ? `
+                            <div class="mb-6">
+                                <h3 class="text-xl font-bold text-gray-900 mb-4">Recent Insights (${data.insights.length})</h3>
+                                <div class="space-y-2 max-h-60 overflow-y-auto">
+                                    ${data.insights.slice(0, 5).map(insight => `
+                                        <div class="border-l-4 ${insight.severity === 'critical' ? 'border-red-500' : insight.severity === 'warning' ? 'border-yellow-500' : 'border-blue-500'} pl-4 py-2">
+                                            <p class="font-medium text-gray-900">${insight.title}</p>
+                                            <p class="text-sm text-gray-600">${insight.content.substring(0, 100)}...</p>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                            ` : ''}
+
+                            <!-- Chat History -->
+                            ${data.chat_history && data.chat_history.length > 0 ? `
+                            <div class="mb-6">
+                                <h3 class="text-xl font-bold text-gray-900 mb-4">Recent Chat Interactions (${data.chat_history.length})</h3>
+                                <div class="space-y-2 max-h-60 overflow-y-auto">
+                                    ${data.chat_history.slice(0, 5).map(chat => `
+                                        <div class="bg-gray-50 p-3 rounded-lg">
+                                            <p class="text-sm font-medium text-gray-900">Patient: ${chat.message}</p>
+                                            <p class="text-sm text-gray-600 mt-1">AI: ${chat.response.substring(0, 100)}...</p>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+            } else {
+                alert('Error loading full details: ' + (data.error || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Failed to load full details');
+        });
 });
 </script>
 {% endblock %}
