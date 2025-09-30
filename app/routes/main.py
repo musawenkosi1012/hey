@@ -140,6 +140,48 @@ def vitals_history():
                          vitals=vitals,
                          days=days)
 
+@bp.route('/profile')
+@login_required
+def patient_profile():
+    """Patient profile page showing medical information"""
+    if current_user.role != 'patient':
+        return redirect(url_for('main.index'))
+    
+    patient = Patient.query.filter_by(user_id=current_user.id).first()
+    if not patient:
+        flash('Patient profile not found.', 'error')
+        return redirect(url_for('main.index'))
+    
+    # Parse JSON fields
+    import json
+    conditions = None
+    medications = None
+    allergies = None
+    
+    try:
+        if patient.conditions:
+            conditions = json.loads(patient.conditions)
+    except:
+        conditions = None
+    
+    try:
+        if patient.medications:
+            medications = json.loads(patient.medications)
+    except:
+        medications = None
+    
+    try:
+        if patient.allergies:
+            allergies = json.loads(patient.allergies)
+    except:
+        allergies = None
+    
+    return render_template('dashboard/profile.html',
+                         patient=patient,
+                         conditions=conditions,
+                         medications=medications,
+                         allergies=allergies)
+
 @bp.route('/caregiver')
 @login_required
 def caregiver_dashboard():

@@ -60,8 +60,18 @@ class VitalsSimulator:
         # Simulate circadian rhythm effects
         if 6 <= hour <= 18:  # Daytime
             activity_factor = 1.2
-        else:  # Nighttime
+            sleep_hours = None
+            sleep_quality = None
+        else:  # Nighttime - occasionally generate sleep data
             activity_factor = 0.8
+            # Generate sleep data once per night (around 6 AM)
+            if hour == 6 and random.random() < 0.3:
+                sleep_hours = round(random.uniform(5.5, 9.0), 1)
+                qualities = ['poor', 'fair', 'good', 'excellent']
+                sleep_quality = random.choice(qualities)
+            else:
+                sleep_hours = None
+                sleep_quality = None
             
         # Add some random variation
         vitals = {
@@ -72,6 +82,8 @@ class VitalsSimulator:
             'temperature': round(self.base_vitals['temperature'] + random.uniform(-1, 1), 1),
             'steps': random.randint(0, 100) if hour >= 6 and hour <= 22 else 0,
             'calories_burned': random.randint(0, 50),
+            'sleep_hours': sleep_hours,
+            'sleep_quality': sleep_quality,
             'timestamp': current_time
         }
         
@@ -97,6 +109,8 @@ class VitalsSimulator:
                 temperature=vitals_data['temperature'],
                 steps=vitals_data['steps'],
                 calories_burned=vitals_data['calories_burned'],
+                sleep_hours=vitals_data.get('sleep_hours'),
+                sleep_quality=vitals_data.get('sleep_quality'),
                 timestamp=vitals_data['timestamp'],
                 is_anomaly=vitals_data.get('is_anomaly', False),
                 source='simulator'

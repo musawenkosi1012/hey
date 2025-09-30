@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+
+{% block title %}Patients List - ChroniSense{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Header -->
+    <div class="mb-8 flex items-center justify-between">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900">Patients List</h1>
+            <p class="text-gray-600 mt-1">Overview of all patients with their latest vitals and risk assessments</p>
+        </div>
+        <a href="{{ url_for('doctor.dashboard') }}" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+            <i class="fas fa-arrow-left mr-2"></i>Back to Dashboard
+        </a>
+    </div>
+
+    <!-- Patients Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for item in patients_with_vitals %}
+        <div class="bg-white shadow-lg rounded-lg overflow-hidden hover:shadow-xl transition-shadow">
+            <!-- Patient Header -->
+            <div class="bg-gradient-to-r from-blue-600 to-purple-600 px-6 py-4">
+                <h3 class="text-xl font-bold text-white">{{ item.patient.full_name }}</h3>
+                <p class="text-white text-sm opacity-90">Patient ID: #{{ item.patient.id }}</p>
+            </div>
+
+            <!-- Patient Info -->
+            <div class="p-6">
+                <!-- Contact Info -->
+                <div class="mb-4">
+                    <div class="grid grid-cols-2 gap-2 text-sm">
+                        <div>
+                            <label class="text-gray-500 text-xs">Gender</label>
+                            <p class="text-gray-900 capitalize">{{ item.patient.gender }}</p>
+                        </div>
+                        <div>
+                            <label class="text-gray-500 text-xs">DOB</label>
+                            <p class="text-gray-900">{{ item.patient.date_of_birth.strftime('%Y-%m-%d') }}</p>
+                        </div>
+                    </div>
+                    {% if item.patient.phone %}
+                    <div class="mt-2 text-sm">
+                        <label class="text-gray-500 text-xs">Phone</label>
+                        <p class="text-gray-900">{{ item.patient.phone }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Latest Vitals -->
+                {% if item.latest_vitals %}
+                <div class="mb-4">
+                    <label class="text-gray-500 text-xs font-medium block mb-2">Latest Vitals</label>
+                    <div class="grid grid-cols-2 gap-2 text-sm">
+                        <div class="bg-blue-50 px-3 py-2 rounded">
+                            <p class="text-xs text-gray-500">Blood Pressure</p>
+                            <p class="font-bold text-blue-700">{{ item.latest_vitals.systolic_bp }}/{{ item.latest_vitals.diastolic_bp }}</p>
+                        </div>
+                        <div class="bg-red-50 px-3 py-2 rounded">
+                            <p class="text-xs text-gray-500">Heart Rate</p>
+                            <p class="font-bold text-red-700">{{ item.latest_vitals.heart_rate }} bpm</p>
+                        </div>
+                        <div class="bg-green-50 px-3 py-2 rounded">
+                            <p class="text-xs text-gray-500">SpO2</p>
+                            <p class="font-bold text-green-700">{{ "%.1f"|format(item.latest_vitals.spo2) }}%</p>
+                        </div>
+                        <div class="bg-purple-50 px-3 py-2 rounded">
+                            <p class="text-xs text-gray-500">Temperature</p>
+                            <p class="font-bold text-purple-700">{{ "%.1f"|format(item.latest_vitals.temperature) }}°F</p>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-2">
+                        Last updated: {{ item.latest_vitals.timestamp.strftime('%Y-%m-%d %H:%M') }}
+                    </p>
+                    {% if item.latest_vitals.is_anomaly %}
+                    <div class="bg-red-100 text-red-700 px-3 py-2 rounded mt-2 text-sm">
+                        <i class="fas fa-exclamation-triangle mr-2"></i>Anomaly Detected
+                    </div>
+                    {% endif %}
+                </div>
+                {% else %}
+                <div class="mb-4">
+                    <p class="text-gray-400 text-sm">No vitals data available</p>
+                </div>
+                {% endif %}
+
+                <!-- Risk Prediction -->
+                {% if item.latest_risk %}
+                <div class="mb-4">
+                    <label class="text-gray-500 text-xs font-medium block mb-2">Risk Assessment</label>
+                    <div class="space-y-2">
+                        <div>
+                            <div class="flex items-center justify-between text-xs mb-1">
+                                <span>24h Risk</span>
+                                <span class="font-bold">{{ "%.0f"|format(item.latest_risk.risk_24h) }}%</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                <div class="bg-{% if item.latest_risk.risk_24h < 30 %}green{% elif item.latest_risk.risk_24h < 70 %}yellow{% else %}red{% endif %}-600 h-2 rounded-full" style="width: {{ item.latest_risk.risk_24h }}%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Action Button -->
+                <a href="{{ url_for('doctor.patient_detail', patient_id=item.patient.id) }}" class="block w-full bg-blue-600 text-white text-center px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                    View Full Details
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% if not patients_with_vitals %}
+    <div class="bg-white shadow-lg rounded-lg p-12 text-center">
+        <i class="fas fa-users text-gray-300 text-6xl mb-4"></i>
+        <p class="text-gray-500 text-lg">No patients found</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -321,12 +321,27 @@ class HealthChatbot:
             ).order_by(ChatMessage.timestamp.desc()).limit(limit).all()
             
             logger.info(f"Retrieved {len(messages)} chat messages for patient_id={patient_id}")
-            return [{
-                'id': msg.id,
-                'message': msg.message,
-                'response': msg.response,
-                'timestamp': msg.timestamp.isoformat()
-            } for msg in reversed(messages)]
+            
+            history = []
+            for msg in reversed(messages):
+                # Parse vitals_context if available
+                vitals_context = None
+                if msg.vitals_context:
+                    try:
+                        vitals_context = json.loads(msg.vitals_context)
+                    except:
+                        vitals_context = None
+                
+                history.append({
+                    'id': msg.id,
+                    'message': msg.message,
+                    'response': msg.response,
+                    'timestamp': msg.timestamp.isoformat(),
+                    'session_id': msg.session_id,
+                    'vitals_context': vitals_context
+                })
+            
+            return history
             
         except Exception as e:
             print(f"Error getting chat history: {e}")

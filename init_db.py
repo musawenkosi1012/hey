@@ -120,7 +120,26 @@ def create_sample_vitals(patient_id):
     vitals_count = 0
     
     for day in range(7):
-        for hour in range(0, 24, 2):  # Every 2 hours
+        # Add sleep data once per day (in the morning)
+        morning_vitals = VitalSigns(
+            patient_id=patient_id,
+            heart_rate=int(base_vitals['heart_rate'] * 0.9 + random.randint(-5, 5)),
+            systolic_bp=int(base_vitals['systolic_bp'] * 0.95 + random.randint(-10, 10)),
+            diastolic_bp=int(base_vitals['diastolic_bp'] * 0.95 + random.randint(-5, 5)),
+            spo2=round(base_vitals['spo2'] + random.uniform(-1, 0.5), 1),
+            temperature=round(base_vitals['temperature'] + random.uniform(-0.5, 0.5), 1),
+            steps=0,
+            calories_burned=0,
+            sleep_hours=round(random.uniform(5.5, 9.0), 1),
+            sleep_quality=random.choice(['poor', 'fair', 'good', 'excellent']),
+            timestamp=start_date + timedelta(days=day, hours=6),
+            source='simulator'
+        )
+        db.session.add(morning_vitals)
+        vitals_count += 1
+        
+        # Regular vitals throughout the day
+        for hour in range(8, 24, 2):  # Every 2 hours from 8 AM
             timestamp = start_date + timedelta(days=day, hours=hour)
             
             # Add some realistic variation
