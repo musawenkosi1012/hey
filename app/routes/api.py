@@ -18,6 +18,28 @@ def utc_now():
 
 bp = Blueprint('api', __name__, url_prefix='/api')
 
+@bp.route('/health')
+def health_check():
+    """Health check endpoint for Render and monitoring"""
+    try:
+        # Check database connectivity
+        from app import db
+        db.session.execute(db.text('SELECT 1'))
+        
+        return jsonify({
+            'status': 'healthy',
+            'service': 'ChroniSense API',
+            'database': 'connected',
+            'timestamp': utc_now().isoformat()
+        }), 200
+    except Exception as e:
+        return jsonify({
+            'status': 'unhealthy',
+            'service': 'ChroniSense API',
+            'error': str(e),
+            'timestamp': utc_now().isoformat()
+        }), 503
+
 @bp.route('/vitals/<int:patient_id>')
 @login_required
 def get_vitals(patient_id):
