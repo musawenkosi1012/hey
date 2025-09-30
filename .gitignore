@@ -48,4 +48,4 @@ coverage.xml
 
 node_modules/
 *.log
-*.db
+*.dbtest_fixes.py
