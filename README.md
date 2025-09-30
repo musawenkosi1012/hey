@@ -1,8 +1,14 @@
 # ChroniSense - AI-Powered Health Monitoring System
 
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy)
+
 ChroniSense is an AI-powered health monitoring and coaching system designed for chronic condition patients (hypertension, diabetes, stroke recovery). It combines real-time vitals simulation, AI health coaching, and personalized insights to provide comprehensive health management.
 
-## 🚀 Features
+## 🚀 Quick Deploy
+
+**One-Click Deployment to Render**: Click the button above or see [DEPLOYMENT.md](DEPLOYMENT.md) for detailed instructions.
+
+## ✨ Features
 
 ### Core Components
 
