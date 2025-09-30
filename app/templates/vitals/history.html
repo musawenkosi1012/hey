@@ -1,0 +1,380 @@
+{% extends "base.html" %}
+
+{% block title %}Vitals History - ChroniSense{% endblock %}
+
+{% block head %}
+<style>
+    .vitals-card {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .vitals-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 20px -5px rgba(0, 0, 0, 0.1);
+    }
+    .status-normal { background: linear-gradient(90deg, rgba(34, 197, 94, 0.1) 0%, transparent 100%); border-left: 4px solid #22C55E; }
+    .status-warning { background: linear-gradient(90deg, rgba(245, 158, 11, 0.1) 0%, transparent 100%); border-left: 4px solid #F59E0B; }
+    .status-critical { background: linear-gradient(90deg, rgba(239, 68, 68, 0.1) 0%, transparent 100%); border-left: 4px solid #EF4444; }
+    .gradient-header { background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%); }
+    .chart-container { position: relative; height: 300px; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Header -->
+    <div class="gradient-header text-white rounded-2xl shadow-lg p-8 mb-8">
+        <div class="flex items-center justify-between">
+            <div>
+                <div class="flex items-center mb-2">
+                    <i class="fas fa-heartbeat text-3xl mr-4"></i>
+                    <h1 class="text-3xl font-bold">Vitals History</h1>
+                </div>
+                <p class="text-white/80 mt-2">Comprehensive health monitoring for {{ patient.first_name }} {{ patient.last_name }}</p>
+            </div>
+            <a href="{{ url_for('main.patient_dashboard') }}" class="bg-white text-blue-600 hover:bg-gray-100 px-4 py-2 rounded-lg text-sm font-medium inline-flex items-center">
+                <i class="fas fa-arrow-left mr-2"></i>
+                Back to Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Time Range Selector -->
+    <div class="bg-white rounded-xl shadow-lg p-6 mb-8">
+        <div class="flex items-center justify-between">
+            <h2 class="text-lg font-semibold text-gray-900">Time Period</h2>
+            <div class="flex space-x-2">
+                <a href="{{ url_for('main.vitals_history') }}?days=1" class="px-4 py-2 rounded-lg text-sm font-medium {% if days == 1 %}bg-blue-600 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">
+                    24 Hours
+                </a>
+                <a href="{{ url_for('main.vitals_history') }}?days=7" class="px-4 py-2 rounded-lg text-sm font-medium {% if days == 7 %}bg-blue-600 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">
+                    7 Days
+                </a>
+                <a href="{{ url_for('main.vitals_history') }}?days=30" class="px-4 py-2 rounded-lg text-sm font-medium {% if days == 30 %}bg-blue-600 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">
+                    30 Days
+                </a>
+                <a href="{{ url_for('main.vitals_history') }}?days=90" class="px-4 py-2 rounded-lg text-sm font-medium {% if days == 90 %}bg-blue-600 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">
+                    90 Days
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Statistics -->
+    {% if vitals %}
+        {% set bp_vitals = vitals|selectattr('systolic_bp')|list %}
+        {% set hr_vitals = vitals|selectattr('heart_rate')|list %}
+        {% set spo2_vitals = vitals|selectattr('spo2')|list %}
+        
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-600 text-sm">Avg Blood Pressure</p>
+                        {% if bp_vitals %}
+                            {% set avg_sys = (bp_vitals|sum(attribute='systolic_bp') / bp_vitals|length)|round|int %}
+                            {% set avg_dia = (bp_vitals|sum(attribute='diastolic_bp') / bp_vitals|length)|round|int %}
+                            <p class="text-2xl font-bold text-gray-900">{{ avg_sys }}/{{ avg_dia }}</p>
+                        {% else %}
+                            <p class="text-2xl font-bold text-gray-400">--/--</p>
+                        {% endif %}
+                    </div>
+                    <div class="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-heartbeat text-red-600 text-xl"></i>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-600 text-sm">Avg Heart Rate</p>
+                        {% if hr_vitals %}
+                            {% set avg_hr = (hr_vitals|sum(attribute='heart_rate') / hr_vitals|length)|round|int %}
+                            <p class="text-2xl font-bold text-gray-900">{{ avg_hr }} bpm</p>
+                        {% else %}
+                            <p class="text-2xl font-bold text-gray-400">-- bpm</p>
+                        {% endif %}
+                    </div>
+                    <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-heart text-purple-600 text-xl"></i>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-600 text-sm">Avg SpO2</p>
+                        {% if spo2_vitals %}
+                            {% set avg_spo2 = (spo2_vitals|sum(attribute='spo2') / spo2_vitals|length)|round(1) %}
+                            <p class="text-2xl font-bold text-gray-900">{{ avg_spo2 }}%</p>
+                        {% else %}
+                            <p class="text-2xl font-bold text-gray-400">--%</p>
+                        {% endif %}
+                    </div>
+                    <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-lungs text-blue-600 text-xl"></i>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-600 text-sm">Total Readings</p>
+                        <p class="text-2xl font-bold text-gray-900">{{ vitals|length }}</p>
+                    </div>
+                    <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-chart-line text-green-600 text-xl"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            <!-- Blood Pressure Chart -->
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Blood Pressure Trend</h3>
+                <div class="chart-container">
+                    <canvas id="bpChart"></canvas>
+                </div>
+            </div>
+            
+            <!-- Heart Rate Chart -->
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Heart Rate Trend</h3>
+                <div class="chart-container">
+                    <canvas id="hrChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detailed Vitals List -->
+        <div class="bg-white rounded-xl shadow-lg p-6">
+            <h3 class="text-xl font-semibold text-gray-900 mb-6">Detailed Records</h3>
+            
+            <div class="space-y-4">
+                {% for vital in vitals[:50] %}
+                    {% set is_critical = (vital.systolic_bp and vital.systolic_bp > 140) or (vital.heart_rate and (vital.heart_rate > 100 or vital.heart_rate < 60)) %}
+                    {% set is_warning = (vital.systolic_bp and vital.systolic_bp > 130) or (vital.spo2 and vital.spo2 < 95) %}
+                    
+                    <div class="vitals-card p-4 rounded-lg {% if is_critical %}status-critical{% elif is_warning %}status-warning{% else %}status-normal{% endif %}">
+                        <div class="flex items-center justify-between">
+                            <div class="flex-1">
+                                <div class="flex items-center space-x-6">
+                                    <div>
+                                        <p class="text-xs text-gray-500">Blood Pressure</p>
+                                        <p class="text-lg font-semibold text-gray-900">
+                                            {{ vital.systolic_bp or '--' }}/{{ vital.diastolic_bp or '--' }}
+                                            <span class="text-xs text-gray-500">mmHg</span>
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <p class="text-xs text-gray-500">Heart Rate</p>
+                                        <p class="text-lg font-semibold text-gray-900">
+                                            {{ vital.heart_rate or '--' }}
+                                            <span class="text-xs text-gray-500">bpm</span>
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <p class="text-xs text-gray-500">SpO2</p>
+                                        <p class="text-lg font-semibold text-gray-900">
+                                            {{ vital.spo2 or '--' }}
+                                            <span class="text-xs text-gray-500">%</span>
+                                        </p>
+                                    </div>
+                                    {% if vital.temperature %}
+                                    <div>
+                                        <p class="text-xs text-gray-500">Temp</p>
+                                        <p class="text-lg font-semibold text-gray-900">
+                                            {{ vital.temperature }}
+                                            <span class="text-xs text-gray-500">°F</span>
+                                        </p>
+                                    </div>
+                                    {% endif %}
+                                    {% if vital.steps %}
+                                    <div>
+                                        <p class="text-xs text-gray-500">Steps</p>
+                                        <p class="text-lg font-semibold text-gray-900">{{ vital.steps }}</p>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                <div class="mt-2 flex items-center space-x-4">
+                                    <span class="text-xs text-gray-500">
+                                        <i class="far fa-clock mr-1"></i>
+                                        {{ vital.timestamp.strftime('%B %d, %Y at %I:%M %p') }}
+                                    </span>
+                                    <span class="text-xs text-gray-500">
+                                        <i class="fas fa-microchip mr-1"></i>
+                                        Source: {{ vital.source }}
+                                    </span>
+                                    {% if vital.is_anomaly %}
+                                    <span class="text-xs bg-red-100 text-red-600 px-2 py-1 rounded">
+                                        <i class="fas fa-exclamation-triangle mr-1"></i>
+                                        Anomaly Detected
+                                    </span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="ml-4">
+                                {% if is_critical %}
+                                    <div class="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                                        <i class="fas fa-exclamation-triangle text-red-600"></i>
+                                    </div>
+                                {% elif is_warning %}
+                                    <div class="w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center">
+                                        <i class="fas fa-exclamation-circle text-yellow-600"></i>
+                                    </div>
+                                {% else %}
+                                    <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                                        <i class="fas fa-check-circle text-green-600"></i>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+            
+            {% if vitals|length > 50 %}
+            <div class="mt-6 text-center">
+                <p class="text-gray-600">Showing 50 of {{ vitals|length }} records</p>
+            </div>
+            {% endif %}
+        </div>
+    {% else %}
+        <!-- No Data State -->
+        <div class="bg-white rounded-xl shadow-lg p-12 text-center">
+            <div class="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-heartbeat text-4xl text-blue-600"></i>
+            </div>
+            <h3 class="text-xl font-semibold text-gray-900 mb-2">No Vitals Data Yet</h3>
+            <p class="text-gray-600 mb-6">Start monitoring your health by activating the vitals simulator or connecting your devices.</p>
+            <a href="{{ url_for('main.patient_dashboard') }}" class="bg-blue-600 text-white hover:bg-blue-700 px-6 py-3 rounded-lg text-sm font-medium inline-flex items-center">
+                <i class="fas fa-arrow-left mr-2"></i>
+                Go to Dashboard
+            </a>
+        </div>
+    {% endif %}
+
+    <!-- Quick Actions -->
+    <div class="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="bg-gradient-to-r from-purple-500 to-pink-500 text-white p-6 rounded-xl">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-lg font-semibold mb-2">AI Health Coach</h3>
+                    <p class="text-white/80 text-sm mb-4">Ask about your vitals</p>
+                    <a href="{{ url_for('main.chatbot_page') }}" class="bg-white text-purple-600 hover:bg-gray-100 px-4 py-2 rounded-lg text-sm font-medium inline-flex items-center">
+                        <i class="fas fa-robot mr-2"></i>
+                        Chat Now
+                    </a>
+                </div>
+                <i class="fas fa-comments text-4xl text-white/60"></i>
+            </div>
+        </div>
+
+        <div class="bg-gradient-to-r from-blue-500 to-cyan-500 text-white p-6 rounded-xl">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-lg font-semibold mb-2">Health Insights</h3>
+                    <p class="text-white/80 text-sm mb-4">View AI-generated reports</p>
+                    <a href="{{ url_for('main.electrobook') }}" class="bg-white text-blue-600 hover:bg-gray-100 px-4 py-2 rounded-lg text-sm font-medium inline-flex items-center">
+                        <i class="fas fa-book-open mr-2"></i>
+                        View Reports
+                    </a>
+                </div>
+                <i class="fas fa-chart-line text-4xl text-white/60"></i>
+            </div>
+        </div>
+
+        <div class="bg-gradient-to-r from-green-500 to-emerald-500 text-white p-6 rounded-xl">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-lg font-semibold mb-2">Dashboard</h3>
+                    <p class="text-white/80 text-sm mb-4">Real-time monitoring</p>
+                    <a href="{{ url_for('main.patient_dashboard') }}" class="bg-white text-green-600 hover:bg-gray-100 px-4 py-2 rounded-lg text-sm font-medium inline-flex items-center">
+                        <i class="fas fa-tachometer-alt mr-2"></i>
+                        View Dashboard
+                    </a>
+                </div>
+                <i class="fas fa-heartbeat text-4xl text-white/60"></i>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Prepare data for charts
+const vitalsData = {{ vitals|tojson }};
+
+// Sort by timestamp
+vitalsData.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+// Blood Pressure Chart
+const bpCtx = document.getElementById('bpChart');
+if (bpCtx) {
+    new Chart(bpCtx, {
+        type: 'line',
+        data: {
+            labels: vitalsData.map(v => new Date(v.timestamp).toLocaleDateString()),
+            datasets: [{
+                label: 'Systolic BP',
+                data: vitalsData.map(v => v.systolic_bp),
+                borderColor: '#EF4444',
+                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                tension: 0.4
+            }, {
+                label: 'Diastolic BP',
+                data: vitalsData.map(v => v.diastolic_bp),
+                borderColor: '#F59E0B',
+                backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'top' }
+            },
+            scales: {
+                y: { beginAtZero: false }
+            }
+        }
+    });
+}
+
+// Heart Rate Chart
+const hrCtx = document.getElementById('hrChart');
+if (hrCtx) {
+    new Chart(hrCtx, {
+        type: 'line',
+        data: {
+            labels: vitalsData.map(v => new Date(v.timestamp).toLocaleDateString()),
+            datasets: [{
+                label: 'Heart Rate (bpm)',
+                data: vitalsData.map(v => v.heart_rate),
+                borderColor: '#8B5CF6',
+                backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                tension: 0.4,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'top' }
+            },
+            scales: {
+                y: { beginAtZero: false }
+            }
+        }
+    });
+}
+</script>
+{% endblock %}

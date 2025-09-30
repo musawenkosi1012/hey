@@ -588,3 +588,151 @@ def get_health_summary_report(patient_id):
         import traceback
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
+
+@bp.route('/reports/generate/<int:patient_id>', methods=['POST'])
+@login_required
+def generate_report(patient_id):
+    """Generate and save a daily, weekly, or monthly report"""
+    try:
+        # Check authorization
+        if current_user.role == 'patient':
+            patient = Patient.query.filter_by(user_id=current_user.id, id=patient_id).first()
+            if not patient:
+                return jsonify({'error': 'Unauthorized'}), 403
+        elif current_user.role not in ['doctor']:
+            return jsonify({'error': 'Unauthorized'}), 403
+        
+        patient = Patient.query.get(patient_id)
+        if not patient:
+            return jsonify({'error': 'Patient not found'}), 404
+        
+        data = request.get_json()
+        report_type = data.get('type', 'daily')  # daily, weekly, monthly
+        
+        # Calculate period based on report type
+        if report_type == 'daily':
+            days = 1
+            period_start = utc_now().replace(hour=0, minute=0, second=0, microsecond=0)
+            period_end = utc_now()
+        elif report_type == 'weekly':
+            days = 7
+            period_start = utc_now() - timedelta(days=7)
+            period_end = utc_now()
+        elif report_type == 'monthly':
+            days = 30
+            period_start = utc_now() - timedelta(days=30)
+            period_end = utc_now()
+        else:
+            return jsonify({'error': 'Invalid report type'}), 400
+        
+        # Get vitals for the period
+        vitals = VitalSigns.query.filter(
+            VitalSigns.patient_id == patient_id,
+            VitalSigns.timestamp >= period_start,
+            VitalSigns.timestamp <= period_end
+        ).order_by(VitalSigns.timestamp.asc()).all()
+        
+        if not vitals:
+            return jsonify({'error': 'No vitals data available for this period'}), 404
+        
+        # Calculate statistics
+        bp_readings = [v for v in vitals if v.systolic_bp and v.diastolic_bp]
+        hr_readings = [v for v in vitals if v.heart_rate]
+        spo2_readings = [v for v in vitals if v.spo2]
+        
+        # Generate AI insights using chatbot service
+        avg_bp_sys = sum(v.systolic_bp for v in bp_readings) / len(bp_readings) if bp_readings else 0
+        avg_bp_dia = sum(v.diastolic_bp for v in bp_readings) / len(bp_readings) if bp_readings else 0
+        avg_hr = sum(v.heart_rate for v in hr_readings) / len(hr_readings) if hr_readings else 0
+        avg_spo2 = sum(v.spo2 for v in spo2_readings) / len(spo2_readings) if spo2_readings else 0
+        
+        # Generate AI analysis
+        analysis_prompt = f"Generate a {report_type} health report for a patient with these vitals: BP {avg_bp_sys:.0f}/{avg_bp_dia:.0f}, HR {avg_hr:.0f} bpm, SpO2 {avg_spo2:.1f}%. Provide analysis and recommendations."
+        ai_response = chatbot.generate_response(patient_id, analysis_prompt, f"report_{report_type}_{utc_now().timestamp()}")
+        
+        # Determine severity
+        severity = 'info'
+        if avg_bp_sys > 140 or avg_hr > 100 or avg_spo2 < 92:
+            severity = 'critical'
+        elif avg_bp_sys > 130 or avg_hr > 90 or avg_spo2 < 95:
+            severity = 'warning'
+        
+        # Create insight record
+        from app.models.insights import PatientInsight
+        insight = PatientInsight(
+            patient_id=patient_id,
+            title=f"{report_type.capitalize()} Health Report - {period_end.strftime('%B %d, %Y')}",
+            content=ai_response.get('response', 'Report generated successfully'),
+            insight_type=report_type,
+            severity=severity,
+            period_start=period_start,
+            period_end=period_end,
+            generated_by_ai=True
+        )
+        
+        db.session.add(insight)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'{report_type.capitalize()} report generated successfully',
+            'report': {
+                'id': insight.id,
+                'title': insight.title,
+                'content': insight.content,
+                'type': report_type,
+                'severity': severity,
+                'period_start': period_start.isoformat(),
+                'period_end': period_end.isoformat(),
+                'generated_at': insight.created_at.isoformat()
+            }
+        })
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+@bp.route('/reports/scheduled/<int:patient_id>')
+@login_required
+def get_scheduled_reports(patient_id):
+    """Get all scheduled reports (daily, weekly, monthly) for a patient"""
+    try:
+        # Check authorization
+        if current_user.role == 'patient':
+            patient = Patient.query.filter_by(user_id=current_user.id, id=patient_id).first()
+            if not patient:
+                return jsonify({'error': 'Unauthorized'}), 403
+        
+        report_type = request.args.get('type')  # daily, weekly, monthly, or None for all
+        
+        from app.models.insights import PatientInsight
+        query = PatientInsight.query.filter_by(patient_id=patient_id)
+        
+        if report_type:
+            query = query.filter_by(insight_type=report_type)
+        else:
+            query = query.filter(PatientInsight.insight_type.in_(['daily', 'weekly', 'monthly']))
+        
+        reports = query.order_by(PatientInsight.created_at.desc()).limit(30).all()
+        
+        return jsonify({
+            'success': True,
+            'patient_id': patient_id,
+            'reports': [{
+                'id': r.id,
+                'title': r.title,
+                'content': r.content,
+                'type': r.insight_type,
+                'severity': r.severity,
+                'period_start': r.period_start.isoformat() if r.period_start else None,
+                'period_end': r.period_end.isoformat() if r.period_end else None,
+                'created_at': r.created_at.isoformat(),
+                'generated_by_ai': r.generated_by_ai
+            } for r in reports]
+        })
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500

@@ -55,7 +55,7 @@
     </div>
 
     <!-- Stats Overview -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         <div class="bg-white rounded-xl shadow-lg p-6">
             <div class="flex items-center justify-between">
                 <div>
@@ -89,6 +89,14 @@
                 </div>
             </div>
         </div>
+        <div class="bg-white rounded-xl shadow-lg p-6">
+            <button onclick="generateReport('daily')" class="w-full h-full flex flex-col items-center justify-center hover:bg-gray-50 rounded-lg transition-colors">
+                <div class="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center mb-2">
+                    <i class="fas fa-plus-circle text-indigo-600 text-xl"></i>
+                </div>
+                <p class="text-gray-600 text-sm font-medium">Generate Report</p>
+            </button>
+        </div>
     </div>
 
     <!-- Daily Insights Section -->
@@ -98,7 +106,12 @@
                 <i class="fas fa-calendar-day text-2xl text-blue-600 mr-3"></i>
                 <h2 class="text-2xl font-bold text-gray-900">Daily Insights</h2>
             </div>
-            <span class="text-sm text-gray-500">Last 7 days</span>
+            <div class="flex space-x-2">
+                <span class="text-sm text-gray-500">Last 7 days</span>
+                <button onclick="generateReport('daily')" class="ml-4 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm font-medium">
+                    <i class="fas fa-plus mr-2"></i>Generate Daily Report
+                </button>
+            </div>
         </div>
 
         {% if daily_insights %}
@@ -169,7 +182,12 @@
                 <i class="fas fa-calendar-week text-2xl text-purple-600 mr-3"></i>
                 <h2 class="text-2xl font-bold text-gray-900">Weekly Insights</h2>
             </div>
-            <span class="text-sm text-gray-500">Last 4 weeks</span>
+            <div class="flex space-x-2">
+                <span class="text-sm text-gray-500">Last 4 weeks</span>
+                <button onclick="generateReport('weekly')" class="ml-4 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 text-sm font-medium">
+                    <i class="fas fa-plus mr-2"></i>Generate Weekly Report
+                </button>
+            </div>
         </div>
 
         {% if weekly_insights %}
@@ -268,6 +286,46 @@
 
 {% block scripts %}
 <script>
+// Generate report function
+function generateReport(reportType) {
+    if (!confirm(`Generate a ${reportType} health report? This will analyze your recent vitals data.`)) {
+        return;
+    }
+    
+    // Show loading state
+    const button = event.target.closest('button');
+    const originalContent = button.innerHTML;
+    button.disabled = true;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+    
+    fetch('/api/reports/generate/{{ patient.id }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            type: reportType
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(`${reportType.charAt(0).toUpperCase() + reportType.slice(1)} report generated successfully!`);
+            window.location.reload();
+        } else {
+            alert('Error generating report: ' + (data.error || 'Unknown error'));
+            button.disabled = false;
+            button.innerHTML = originalContent;
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error generating report. Please try again.');
+        button.disabled = false;
+        button.innerHTML = originalContent;
+    });
+}
+
 // Smooth scroll animations
 document.addEventListener('DOMContentLoaded', function() {
     const cards = document.querySelectorAll('.insight-card');

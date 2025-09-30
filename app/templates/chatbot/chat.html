@@ -51,13 +51,26 @@
 
 {% block content %}
 <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    <!-- Header -->
-    <div class="text-center mb-8">
-        <div class="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full mb-4">
-            <i class="fas fa-robot text-2xl text-white"></i>
+    <!-- Patient Info Header -->
+    <div class="bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-2xl shadow-lg p-6 mb-8">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center">
+                <div class="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mr-4">
+                    <i class="fas fa-user text-2xl text-white"></i>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-bold">{{ patient.first_name }} {{ patient.last_name }}</h2>
+                    <p class="text-white/80">Patient ID: #{{ patient.id }} | Gender: {{ patient.gender|capitalize }}</p>
+                </div>
+            </div>
+            <div class="text-right">
+                <p class="text-sm text-white/80">AI Health Coach</p>
+                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs bg-green-500 text-white mt-1">
+                    <span class="w-2 h-2 bg-white rounded-full mr-2"></span>
+                    Online & Ready
+                </span>
+            </div>
         </div>
-        <h1 class="text-3xl font-bold text-gray-900 mb-2">AI Health Coach</h1>
-        <p class="text-gray-600">Your personal health assistant powered by AI</p>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
@@ -155,8 +168,11 @@
                     </div>
                 </div>
                 <div class="mt-4 pt-4 border-t border-gray-200">
-                    <a href="{{ url_for('main.patient_dashboard') }}" class="text-blue-600 hover:text-blue-800 text-sm font-medium">
-                        View Full Dashboard <i class="fas fa-arrow-right ml-1"></i>
+                    <a href="{{ url_for('main.vitals_history') }}" class="text-blue-600 hover:text-blue-800 text-sm font-medium block mb-2">
+                        <i class="fas fa-chart-line mr-1"></i> View Full History
+                    </a>
+                    <a href="{{ url_for('main.electrobook') }}" class="text-purple-600 hover:text-purple-800 text-sm font-medium block">
+                        <i class="fas fa-book-open mr-1"></i> View Health Reports
                     </a>
                 </div>
             </div>
