@@ -219,3 +219,53 @@ def inject_anomaly():
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@bp.route('/health-tips/<int:patient_id>')
+@login_required
+def get_health_tips(patient_id):
+    """Get personalized health tips for a patient"""
+    try:
+        # Check authorization
+        if current_user.role == 'patient':
+            patient = Patient.query.filter_by(user_id=current_user.id, id=patient_id).first()
+            if not patient:
+                return jsonify({'error': 'Unauthorized'}), 403
+        
+        category = request.args.get('category', 'general')
+        tips = chatbot.get_health_tips(patient_id, category)
+        
+        return jsonify({
+            'success': True,
+            'tips': tips,
+            'category': category
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@bp.route('/web-knowledge')
+@login_required
+def get_web_knowledge():
+    """Get web-scraped health knowledge about a topic"""
+    try:
+        from app.services.web_scraper import scraper
+        
+        topic = request.args.get('topic', 'general health')
+        max_length = request.args.get('max_length', 500, type=int)
+        
+        knowledge = scraper.scrape_health_topic(topic, max_length)
+        
+        if knowledge:
+            return jsonify({
+                'success': True,
+                'topic': topic,
+                'knowledge': knowledge
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': 'No knowledge found for this topic'
+            }), 404
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500

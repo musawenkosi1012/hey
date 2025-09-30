@@ -6,6 +6,7 @@ from app.models.vitals import VitalSigns, RiskPrediction
 from app.models.patient import Patient
 from app.models.insights import ChatMessage
 from app import db
+from app.services.web_scraper import scraper
 
 class HealthChatbot:
     def __init__(self):
@@ -152,9 +153,48 @@ class HealthChatbot:
             return None
     
     def generate_fallback_response(self, message, context):
-        """Generate response using rule-based system"""
+        """Generate response using rule-based system with web-scraped knowledge"""
         message_lower = message.lower()
         
+        # Try to get web-scraped knowledge first for better responses
+        web_knowledge = None
+        
+        # Identify key health topics in the message
+        health_topics = ['hypertension', 'blood pressure', 'diabetes', 'diet', 'exercise', 
+                        'stress', 'medication', 'heart rate', 'sleep', 'sodium', 'weight']
+        
+        for topic in health_topics:
+            if topic in message_lower or topic.replace(' ', '') in message_lower:
+                web_knowledge = scraper.scrape_health_topic(topic, max_length=400)
+                if web_knowledge:
+                    break
+        
+        # If we have web-scraped knowledge, use it
+        if web_knowledge:
+            # Personalize with patient vitals if relevant
+            current_bp = context.get('latest_vitals', {}).get('blood_pressure', 'unknown')
+            if 'blood pressure' in message_lower and current_bp != 'unknown':
+                response = f"Based on current medical guidelines: {web_knowledge}\n\n"
+                response += f"Your current blood pressure is {current_bp}. "
+                
+                if '/' in current_bp:
+                    try:
+                        sys_bp = int(current_bp.split('/')[0])
+                        if sys_bp > 140:
+                            response += "This is elevated. Please follow the recommendations above and consult your healthcare provider."
+                        elif sys_bp > 130:
+                            response += "This is in the Stage 1 hypertension range. The lifestyle changes mentioned above can help."
+                        else:
+                            response += "This is within normal range. Keep up the good work with your healthy lifestyle!"
+                    except:
+                        pass
+                
+                return response
+            
+            # For other topics, return web knowledge with encouragement
+            return f"{web_knowledge}\n\nRemember, I'm here to support you. If you have specific concerns about your condition, please consult with your healthcare provider."
+        
+        # Fall back to original rule-based responses if no web knowledge found
         # Determine response category
         if any(word in message_lower for word in ['hello', 'hi', 'hey', 'start']):
             responses = self.responses['greeting']
@@ -268,6 +308,7 @@ class HealthChatbot:
         try:
             context = self.get_patient_context(patient_id)
             latest_vitals = context.get('latest_vitals', {})
+            patient = Patient.query.get(patient_id)
             
             suggestions = []
             
@@ -289,6 +330,14 @@ class HealthChatbot:
             if steps < 5000:
                 suggestions.append("How can I increase my daily activity?")
             
+            # Condition-specific suggestions
+            if patient and patient.conditions:
+                conditions_lower = patient.conditions.lower()
+                if 'hypertension' in conditions_lower or 'blood pressure' in conditions_lower:
+                    suggestions.append("What foods help lower blood pressure?")
+                if 'diabetes' in conditions_lower:
+                    suggestions.append("How should I manage my blood sugar?")
+            
             # General suggestions
             suggestions.extend([
                 "What should I eat today?",
@@ -306,6 +355,31 @@ class HealthChatbot:
                 "How can I improve my daily activity?",
                 "Tell me about my health trends"
             ]
+    
+    def get_health_tips(self, patient_id, category='general'):
+        """Get personalized health tips using web scraper"""
+        try:
+            patient = Patient.query.get(patient_id)
+            if not patient:
+                return []
+            
+            # Determine primary condition
+            condition = 'general'
+            if patient.conditions:
+                conditions_lower = patient.conditions.lower()
+                if 'hypertension' in conditions_lower or 'blood pressure' in conditions_lower:
+                    condition = 'hypertension'
+                elif 'diabetes' in conditions_lower:
+                    condition = 'diabetes'
+            
+            # Get tips from web scraper
+            tips = scraper.search_health_tips(condition, category)
+            
+            return tips
+            
+        except Exception as e:
+            print(f"Error getting health tips: {e}")
+            return []
 
 # Global chatbot instance
 chatbot = HealthChatbot()

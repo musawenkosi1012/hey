@@ -13,3 +13,7 @@ requests==2.31.0
 
 # Authentication
 Werkzeug==2.3.7
+
+# Web Scraping and AI Enhancement
+beautifulsoup4==4.12.2
+lxml==4.9.3
