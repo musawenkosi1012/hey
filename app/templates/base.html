@@ -144,8 +144,18 @@
 
     <!-- Custom JavaScript -->
     <script>
-        // Initialize socket connection for real-time updates
-        const socket = io();
+        // Initialize socket connection for real-time updates (if Socket.IO is available)
+        let socket = null;
+        if (typeof io !== 'undefined') {
+            try {
+                socket = io();
+                console.log('Socket.IO connection initialized');
+            } catch (error) {
+                console.error('Failed to initialize Socket.IO:', error);
+            }
+        } else {
+            console.warn('Socket.IO not loaded - real-time updates will be disabled');
+        }
         
         // Common functions
         function formatDate(dateString) {

@@ -287,13 +287,24 @@ function initializeChart() {
 // Load vitals data
 function loadVitalsData() {
     fetch('/api/vitals/{{ patient.id }}?hours=24')
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
-            if (data.success) {
+            if (data.success && data.data) {
                 updateChart(data.data);
+            } else {
+                console.error('Failed to load vitals data:', data.error);
+                showNotification('Error', 'Failed to load vitals data', 'error');
             }
         })
-        .catch(error => console.error('Error loading vitals:', error));
+        .catch(error => {
+            console.error('Error loading vitals:', error);
+            showNotification('Error', 'Failed to connect to the server', 'error');
+        });
 }
 
 // Update chart with new data
@@ -350,22 +361,24 @@ document.querySelectorAll('.chart-toggle').forEach(button => {
     });
 });
 
-// Real-time updates via WebSocket
-const socket = io();
+// Real-time updates via WebSocket (using global socket from base.html)
+if (socket) {
+    socket.on('vitals_update', function(data) {
+        if (data.patient_id === {{ patient.id }}) {
+            updateVitalsDisplay(data.vitals);
+            loadVitalsData(); // Refresh chart
+        }
+    });
 
-socket.on('vitals_update', function(data) {
-    if (data.patient_id === {{ patient.id }}) {
-        updateVitalsDisplay(data.vitals);
-        loadVitalsData(); // Refresh chart
-    }
-});
-
-socket.on('critical_alert', function(data) {
-    if (data.patient_id === {{ patient.id }}) {
-        showAlert(data.message);
-        showNotification('Health Alert', data.message, 'warning');
-    }
-});
+    socket.on('critical_alert', function(data) {
+        if (data.patient_id === {{ patient.id }}) {
+            showAlert(data.message);
+            showNotification('Health Alert', data.message, 'warning');
+        }
+    });
+} else {
+    console.log('Real-time updates disabled - Socket.IO not available');
+}
 
 // Update vitals display
 function updateVitalsDisplay(vitals) {
@@ -427,23 +440,48 @@ document.getElementById('startSimulation').addEventListener('click', function() 
             patient_id: {{ patient.id }}
         })
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
     .then(data => {
         if (data.success) {
-            showNotification('Simulation Started', 'Vitals simulation is now running');
+            showNotification('Simulation Started', 'Vitals simulation is now running', 'success');
+        } else {
+            showNotification('Error', data.error || 'Failed to start simulation', 'error');
         }
+    })
+    .catch(error => {
+        console.error('Error starting simulation:', error);
+        showNotification('Error', 'Failed to start simulation. Please try again.', 'error');
     });
 });
 
 document.getElementById('stopSimulation').addEventListener('click', function() {
     fetch('/api/simulator/stop', {
-        method: 'POST'
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
     .then(data => {
         if (data.success) {
-            showNotification('Simulation Stopped', 'Vitals simulation has been stopped');
+            showNotification('Simulation Stopped', 'Vitals simulation has been stopped', 'success');
+        } else {
+            showNotification('Error', data.error || 'Failed to stop simulation', 'error');
         }
+    })
+    .catch(error => {
+        console.error('Error stopping simulation:', error);
+        showNotification('Error', 'Failed to stop simulation. Please try again.', 'error');
     });
 });
 

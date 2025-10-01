@@ -216,9 +216,14 @@ function generateSessionId() {
 // Load quick suggestions
 function loadQuickSuggestions() {
     fetch('/api/chat/suggestions')
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
-            if (data.success) {
+            if (data.success && data.suggestions) {
                 const suggestionsContainer = document.getElementById('suggestions');
                 suggestionsContainer.innerHTML = '';
                 
@@ -231,15 +236,23 @@ function loadQuickSuggestions() {
                 });
             }
         })
-        .catch(error => console.error('Error loading suggestions:', error));
+        .catch(error => {
+            console.error('Error loading suggestions:', error);
+            // Silently fail for suggestions - not critical
+        });
 }
 
 // Load recent chats
 function loadRecentChats() {
     fetch('/api/chat/history?limit=5')
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
-            if (data.success) {
+            if (data.success && data.history) {
                 const recentChatsContainer = document.getElementById('recentChats');
                 recentChatsContainer.innerHTML = '';
                 
@@ -252,7 +265,7 @@ function loadRecentChats() {
                     const chatItem = document.createElement('div');
                     chatItem.className = 'cursor-pointer p-2 hover:bg-gray-50 rounded-lg';
                     chatItem.innerHTML = `
-                        <p class="text-sm text-gray-700 truncate">${chat.message}</p>
+                        <p class="text-sm text-gray-700 truncate">${escapeHtml(chat.message)}</p>
                         <p class="text-xs text-gray-500">${formatDate(chat.timestamp)}</p>
                     `;
                     chatItem.addEventListener('click', () => {
@@ -262,21 +275,44 @@ function loadRecentChats() {
                 });
             }
         })
-        .catch(error => console.error('Error loading chat history:', error));
+        .catch(error => {
+            console.error('Error loading chat history:', error);
+            // Silently fail - not critical
+        });
 }
 
 // Load current vitals
 function loadCurrentVitals() {
     fetch('/api/vitals/{{ patient.id }}?hours=1')
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
-            if (data.success && data.data.length > 0) {
+            if (data.success && data.data && data.data.length > 0) {
                 const latest = data.data[data.data.length - 1];
                 document.getElementById('current-bp').textContent = `${latest.systolic_bp}/${latest.diastolic_bp}`;
                 document.getElementById('current-hr').textContent = `${latest.heart_rate} bpm`;
                 document.getElementById('current-spo2').textContent = `${latest.spo2}%`;
                 document.getElementById('current-steps').textContent = latest.steps || 0;
+            } else {
+                // Show placeholder if no data
+                document.getElementById('current-bp').textContent = '--/--';
+                document.getElementById('current-hr').textContent = '-- bpm';
+                document.getElementById('current-spo2').textContent = '--%';
+                document.getElementById('current-steps').textContent = '0';
             }
+        })
+        .catch(error => {
+            console.error('Error loading vitals:', error);
+            // Show error state
+            document.getElementById('current-bp').textContent = 'Error';
+            document.getElementById('current-hr').textContent = 'Error';
+            document.getElementById('current-spo2').textContent = 'Error';
+            document.getElementById('current-steps').textContent = 'Error';
+        });
         })
         .catch(error => console.error('Error loading vitals:', error));
 }
@@ -312,7 +348,12 @@ function sendMessage(message) {
             session_id: currentSessionId
         })
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
     .then(data => {
         hideTypingIndicator();
         
@@ -320,13 +361,16 @@ function sendMessage(message) {
             addMessageToChat(data.response, 'ai');
             loadRecentChats(); // Refresh recent chats
         } else {
-            addMessageToChat('Sorry, I encountered an error. Please try again.', 'ai');
+            const errorMsg = data.error || 'Sorry, I encountered an error. Please try again.';
+            addMessageToChat(errorMsg, 'ai');
+            console.error('Chat error:', data.error);
         }
     })
     .catch(error => {
         hideTypingIndicator();
-        addMessageToChat('Sorry, I encountered an error. Please try again.', 'ai');
-        console.error('Error:', error);
+        const errorMsg = 'Sorry, I encountered a connection error. Please check your internet connection and try again.';
+        addMessageToChat(errorMsg, 'ai');
+        console.error('Fetch error:', error);
     });
 }
 
@@ -403,17 +447,19 @@ document.getElementById('clearHistory').addEventListener('click', function() {
     }
 });
 
-// Real-time vitals updates
-const socket = io();
-
-socket.on('vitals_update', function(data) {
-    if (data.patient_id === {{ patient.id }}) {
-        const vitals = data.vitals;
-        document.getElementById('current-bp').textContent = `${vitals.systolic_bp}/${vitals.diastolic_bp}`;
-        document.getElementById('current-hr').textContent = `${vitals.heart_rate} bpm`;
-        document.getElementById('current-spo2').textContent = `${vitals.spo2}%`;
-        document.getElementById('current-steps').textContent = vitals.steps || 0;
-    }
-});
+// Real-time vitals updates (using global socket from base.html)
+if (socket) {
+    socket.on('vitals_update', function(data) {
+        if (data.patient_id === {{ patient.id }}) {
+            const vitals = data.vitals;
+            document.getElementById('current-bp').textContent = `${vitals.systolic_bp}/${vitals.diastolic_bp}`;
+            document.getElementById('current-hr').textContent = `${vitals.heart_rate} bpm`;
+            document.getElementById('current-spo2').textContent = `${vitals.spo2}%`;
+            document.getElementById('current-steps').textContent = vitals.steps || 0;
+        }
+    });
+} else {
+    console.log('Real-time vitals updates disabled - Socket.IO not available');
+}
 </script>
 {% endblock %}
